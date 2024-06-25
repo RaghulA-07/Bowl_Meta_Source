@@ -1,0 +1,64 @@
+From bc928cf6992a93b0986e77957271d23eadecbec8 Mon Sep 17 00:00:00 2001
+From: Nhat Thieu <nhat.thieu.xr@renesas.com> 
+Date: Tue, 10 Oct 2023 11:59:18 +0700
+Subject: [PATCH 1/4] Set the performance governor by default
+
+Set default GPU clock rate is 500MHz
+
+Signed-off-by: Nhat Thieu <nhat.thieu.xr@renesas.com>
+---
+ drivers/gpu/arm/midgard/Kbuild                           | 4 ++--
+ drivers/gpu/arm/midgard/Kconfig                          | 4 ++--
+ drivers/gpu/arm/midgard/backend/gpu/mali_kbase_devfreq.c | 2 +-
+ 3 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/drivers/gpu/arm/midgard/Kbuild b/drivers/gpu/arm/midgard/Kbuild
+index 2f3a033..b17e107 100644
+--- a/drivers/gpu/arm/midgard/Kbuild
++++ b/drivers/gpu/arm/midgard/Kbuild
+@@ -44,8 +44,8 @@ ifeq ($(CONFIG_DEVFREQ_THERMAL),n)
+     $(error CONFIG_DEVFREQ_THERMAL must be set in Kernel configuration)
+ endif
+ 
+-ifeq ($(CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND),n)
+-    $(error CONFIG_DEVFREQ_GOV_SIMPLE_ONDEMAND must be set in Kernel configuration)
++ifeq ($(CONFIG_DEVFREQ_GOV_PERFORMANCE),n)
++    $(error CONFIG_DEVFREQ_GOV_PERFORMANCE must be set in Kernel configuration)
+ endif
+ 
+ ifeq ($(CONFIG_FW_LOADER), n)
+diff --git a/drivers/gpu/arm/midgard/Kconfig b/drivers/gpu/arm/midgard/Kconfig
+index 110c1fc..0220fc2 100644
+--- a/drivers/gpu/arm/midgard/Kconfig
++++ b/drivers/gpu/arm/midgard/Kconfig
+@@ -89,12 +89,12 @@ config MALI_CSF_SUPPORT
+ config MALI_DEVFREQ
+ 	bool "Enable devfreq support for Mali"
+ 	depends on MALI_MIDGARD && PM_DEVFREQ
+-	select DEVFREQ_GOV_SIMPLE_ONDEMAND
++	select DEVFREQ_GOV_PERFORMANCE
+ 	default y
+ 	help
+ 	  Support devfreq for Mali.
+ 
+-	  Using the devfreq framework and, by default, the simple on-demand
++	  Using the devfreq framework and, by default, the performance
+ 	  governor, the frequency of Mali will be dynamically selected from the
+ 	  available OPPs.
+ 
+diff --git a/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_devfreq.c b/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_devfreq.c
+index 79f58f8..9751ed7 100644
+--- a/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_devfreq.c
++++ b/drivers/gpu/arm/midgard/backend/gpu/mali_kbase_devfreq.c
+@@ -650,7 +650,7 @@ int kbase_devfreq_init(struct kbase_device *kbdev)
+ 	if (err)
+ 		goto init_core_mask_table_failed;
+ 
+-	kbdev->devfreq = devfreq_add_device(kbdev->dev, dp, "simple_ondemand", NULL);
++	kbdev->devfreq = devfreq_add_device(kbdev->dev, dp, "performance", NULL);
+ 	if (IS_ERR(kbdev->devfreq)) {
+ 		err = PTR_ERR(kbdev->devfreq);
+ 		kbdev->devfreq = NULL;
+-- 
+2.25.1
+

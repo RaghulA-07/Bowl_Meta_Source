@@ -1,0 +1,112 @@
+diff --git a/arch/arm64/boot/dts/renesas/econ-camera-ar0234-support.dtsi b/arch/arm64/boot/dts/renesas/econ-camera-ar0234-support.dtsi
+new file mode 100644
+index 000000000..dc6e63d0f
+--- /dev/null
++++ b/arch/arm64/boot/dts/renesas/econ-camera-ar0234-support.dtsi
+@@ -0,0 +1,94 @@
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/pinctrl/rzg2l-pinctrl.h>
++
++/ {
++	clk_ext_camera: clk_ext_camera {
++		compatible = "fixed-clock";
++		#clock-cells = <0>;
++		clock-frequency = <24000000>;
++	};
++
++	ar0234_vdddo_1v8: 1p8v {
++		compatible = "regulator-fixed";
++		regulator-name = "camera_vdddo";
++		regulator-min-microvolt = <1800000>;
++		regulator-max-microvolt = <1800000>;
++		regulator-always-on;
++	};
++
++	ar0234_vdda_2v8: 2p8v {
++		compatible = "regulator-fixed";
++		regulator-name = "camera_vdda";
++		regulator-min-microvolt = <2800000>;
++		regulator-max-microvolt = <2800000>;
++		regulator-always-on;
++	};
++
++	ar0234_vddd_1v5: 1p5v {
++		compatible = "regulator-fixed";
++		regulator-name = "camera_vddd";
++		regulator-min-microvolt = <1500000>;
++		regulator-max-microvolt = <1500000>;
++		regulator-always-on;
++	};
++};
++
++
++&i2c0 {
++	pinctrl-0 = <&i2c0_pins>;
++	pinctrl-names = "default";
++	status = "okay";
++       clock-frequency = <400000>;
++	tca6424_22: tca6424@22 
++	         {
++		    compatible = "ti,tca6424";
++		    gpio-controller;
++	            #gpio-cells = <2>;
++		    reg = <0x22>;
++                    status = "okay";
++	        };
++
++	ar0234: camera@42 {
++		compatible = "ovti,ar0234";
++		reg = <0x42>;
++		clock-names = "xclk";
++		clocks = <&clk_ext_camera>;
++		clock-frequency = <24000000>;
++                //camera-mipi-clk = <1200>;
++                camera-mipi-clk = <800>;
++                camera-mipi-lanes = <4>; 
++		vdddo-supply = <&ar0234_vdddo_1v8>;
++		vdda-supply = <&ar0234_vdda_2v8>;
++		vddd-supply = <&ar0234_vddd_1v5>;
++
++		reset-gpios = <&tca6424_22 0 GPIO_ACTIVE_HIGH>;
++		pwdn-gpios = <&tca6424_22 1 GPIO_ACTIVE_HIGH>; 
++
++		port {
++			ar0234_to_csi: endpoint {
++				clock-lanes = <0>;
++				data-lanes = <1 2 3 4>;
++				remote-endpoint = <&csi2_in>;
++			};
++		};
++	};
++};
++
++
++&csi2 {
++	status = "okay";
++
++	ports {
++		port {
++			csi2_in: endpoint {
++				clock-lanes = <0>;
++				data-lanes = <1 2 3 4>;
++				remote-endpoint = <&ar0234_to_csi>;
++			};
++		};
++	};
++};
++
++
++
+diff --git a/arch/arm64/boot/dts/renesas/r9a07g054l2-smarc.dts b/arch/arm64/boot/dts/renesas/r9a07g054l2-smarc.dts
+index 55cb9b65a..5211e8cea 100644
+--- a/arch/arm64/boot/dts/renesas/r9a07g054l2-smarc.dts
++++ b/arch/arm64/boot/dts/renesas/r9a07g054l2-smarc.dts
+@@ -11,6 +11,7 @@
+ #include "rzg2l-smarc-pinfunction.dtsi"
+ #include "rz-smarc-common.dtsi"
+ #include "rzg2l-smarc.dtsi"
++#include "econ-camera-ar0234-support.dtsi"
+ 
+ / {
+ 	model = "Renesas SMARC EVK based on r9a07g054l2";
