@@ -1,0 +1,55 @@
+From Wikipedia, the free encyclopedia
+
+This article relies excessively on references to primary sources. Please improve this article by adding secondary or tertiary sources.
+Find sources: "Rpmsg" – news · newspapers · books · scholar · JSTOR (October 2020) (Learn how and when to remove this template message)
+This article is about Restricted Permission Message. For Remote Processor Messaging, see RPMsg.
+Restricted Permission Message
+Filename extension	
+.rpmsg
+Internet media type	application/x-microsoft-rpmsg-message
+Magic number	76 E8 04 60 C4 11 E3 86[1]
+Developed by	Microsoft
+An rpmsg file is a file format containing a restricted-permission message.[2] It is used to implement IRM for Outlook messages with the aim of controlling access to content via encryption and access controls, and restricting certain actions such as the ability to forward or copy.[2][3]
+
+Messages in this format are normally created by users of Azure Information Protection, Azure Rights Management or Active Directory Rights Management Services.[4]
+
+Implementation
+The rpmsg file is created by writing body, attachments and images to a compound file and then compressing and encrypting it to create a BLOB: the rpmsg file.[5] This resulting file is named message.rpmsg and is included as an attachment to a normal Outlook message.
+
+Applications that support this format, such as Microsoft Outlook, transparently extract and render the message contained in the attachment as a protected message, ignoring the MIME wrapper message that hosts it. This can be implemented by parsing the file structure in-code, as currently the MSIPC SDK, normally used by applications to protect and decrypt content protected with Azure Information Protection, does not provide native functionality to encode and decode the RPMSG format.[6]
+
+Other applications such as mobile mail clients rely on Exchange ActiveSync to perform decryption on their behalf and deliver a version of the message they can render directly.[7]
+
+Rights control
+When a rights managed mail is created the author specifies what rights they wish to grant to the recipient and these rights are specified in the form of an XrML certificate called a 'Publishing License'. This certificate is included within the encrypted rpmsg file. When the rpmsg attachment is decrypted the enclosed 'Publishing License' is sent to the information protection service pointed to by its header in order to obtain a Use License. The service, after analyzing the policy in the certificate and matching it to the identity of the requestor, will build the Use License, another XrML encoded document, which will then be delivered to the client and used by Outlook to determine what the recipient can and cannot do with the message (rights to forward, copy etc.).[5][8]
+
+File format
+An rpmsg file consists of a magic number followed by one or more data chunks.
+
+The magic number is the eight-byte sequence 76 e8 04 60 c4 11 e3 86.
+
+Each data chunk consists of a 12-byte header followed by a variable amount of data bytes. The chunk header consists of 3 DWORDS in little-endian byte order:
+
+Magic number a0 0f 00 00
+Uncompressed chunk length YY YY YY YY
+Compressed chunk length XX XX XX XX.
+The chunk body consists of X bytes of compressed data.
+
+The concatenated data chunks form a single data stream compressed using the DEFLATE algorithm. The format of the uncompressed data is a Compound File Binary document. More specifically, the uncompressed data conforms to the Office Document Cryptography Structure format.[9]
+
+References
+ "[MS-OXORMMS]: Format of the message.rpmsg Attachment". Open Specifications. Microsoft.
+ "Rights Management for E-Mail Messages (Windows)". Internet Explorer for Developers. Microsoft.
+ Robichaux, Paul (12 May 2004). "Using IRM to protect messages". TechTarget. Microsoft. Archived from the original on 31 January 2019.
+ "View and use protected documents with the AIP client". Azure Product Documentation. Microsoft. Retrieved 2017-10-06.
+ "[MS-OXORMMS]: Rights-Managed Email Object Protocol". Open Specifications. Microsoft.
+ Azure-Information-Protection-Samples: Azure Information Protection Samples, Azure Samples, 2017-08-26, retrieved 2017-10-06
+ "[MS-ASRM]: Exchange ActiveSync: Rights Management Protocol". msdn.microsoft.com. Retrieved 2017-10-06.
+ "[MS-RMPR]: Glossary". Open Specifications. Microsoft.
+ "[MS-OFFCRYPTO]: Office Document Cryptography Structure". Open Specifications. Microsoft.
+External links
+Official page for Azure Information Protection
+Compound File Binary File Format
+Categories: Digital rights managementMicrosoft Office
+This page was last edited on 9 August 2023, at 17:10 (UTC).
+Text is available under the Creative Commons Attribution-ShareAlike License 4.0; additional terms may apply. By using this site, you agree to the Terms of Use and Privacy Policy. Wikipedia® is a registered trademark of the Wikimedia Foundation, Inc., a non-profit organization.
