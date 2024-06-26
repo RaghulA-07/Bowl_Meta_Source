@@ -1,0 +1,8 @@
+Time stamp: Thu:May:30:2024,14:14:08.368
+	Label: cat
+	Value: 0.737444
+	Bounding box: x=155,y=62,w=32,h=60
+Time stamp: Thu:May:30:2024,14:14:08.768
+	Label: cat
+	Value: 0.709762
+	Bounding box: x=156,y=61,w=35,h=62

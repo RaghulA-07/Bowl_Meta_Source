@@ -1,0 +1,28 @@
+Time stamp: Sun:Sep:20:2020,10:46:01.636
+	Label: cat
+	Value: 0.622876
+	Bounding box: x=35,y=63,w=156,h=191
+Time stamp: Sun:Sep:20:2020,10:46:02.064
+	Label: cat
+	Value: 0.528864
+	Bounding box: x=23,y=97,w=159,h=158
+Time stamp: Sun:Sep:20:2020,10:46:02.502
+	Label: cat
+	Value: 0.342474
+	Bounding box: x=24,y=105,w=167,h=150
+Time stamp: Sun:Sep:20:2020,10:46:02.908
+	Label: cat
+	Value: 0.30572
+	Bounding box: x=28,y=96,w=150,h=159
+Time stamp: Sun:Sep:20:2020,10:46:03.312
+	Label: cat
+	Value: 0.517164
+	Bounding box: x=50,y=83,w=122,h=172
+Time stamp: Sun:Sep:20:2020,10:46:03.733
+	Label: cat
+	Value: 0.531005
+	Bounding box: x=46,y=85,w=121,h=169
+Time stamp: Sun:Sep:20:2020,10:46:04.152
+	Label: cat
+	Value: 0.662363
+	Bounding box: x=43,y=107,w=130,h=148

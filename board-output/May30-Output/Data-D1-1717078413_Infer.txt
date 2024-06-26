@@ -1,0 +1,8 @@
+Time stamp: Thu:May:30:2024,14:13:33.231
+	Label: dog
+	Value: 0.858742
+	Bounding box: x=93,y=95,w=90,h=122
+Time stamp: Thu:May:30:2024,14:13:33.637
+	Label: dog
+	Value: 0.866151
+	Bounding box: x=90,y=90,w=94,h=129

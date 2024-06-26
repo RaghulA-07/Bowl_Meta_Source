@@ -1,0 +1,8 @@
+Time stamp: Fri:May:31:2024,05:31:17.831
+	Label: dog
+	Value: 0.677377
+	Bounding box: x=213,y=0,w=42,h=69
+Time stamp: Fri:May:31:2024,05:31:17.831
+	Label: cat
+	Value: 0.599197
+	Bounding box: x=113,y=64,w=34,h=50

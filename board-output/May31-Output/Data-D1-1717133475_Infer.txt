@@ -1,0 +1,4 @@
+Time stamp: Fri:May:31:2024,05:31:15.063
+	Label: cat
+	Value: 0.82685
+	Bounding box: x=125,y=79,w=23,h=39
