@@ -39,8 +39,16 @@
 #define GET_SESSION_DATA_ACTIVITY_CMD      (0x0B)
 #define GET_TOTALSESSION_CNT_CMD           (0x0C)
 #define SET_SENSOR_BOWL_CMD                (0x0D)
+#define M33_RPMSG_PIR_TRIGGER_CMD          (0x0E)
 
  
+#define SENSOR_DATA_FRAME                  0x01
+#define PIR_WAKEUP_FRAME                   0x02
+
+/*IPC Harvest Transmission message Keys from harvest to rpmsg hooks */
+#define RPMSG_TX_MSG_KEY                   5678
+
+#define RPMSG_RX_MSG_KEY                   1678 /*Transmission from RMSP hook to Harvest hook*/
 
 /* Exported Variables --------------------------------------------------------*/
 

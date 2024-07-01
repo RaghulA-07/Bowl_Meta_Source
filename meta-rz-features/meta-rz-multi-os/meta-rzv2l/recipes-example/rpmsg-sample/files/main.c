@@ -34,15 +34,11 @@
 /* Private define -----------------------------------------------------------*/
 
 #define SHUTDOWN_MSG                 (0xEF56A55A)
-#define HARVEST_ENABLE               (0x12345678)
-#define HARVEST_DISABLE              (0x22345678)
-#define A55CORE_SHUTDOWN             (0x32345678)
-#define LOADCELL_TARE_SCALE          (0x42345678) // Tare the scale
-#define LOADCELL_CALIB_WEIGHT        (0x52345678)
 
-#define TARGET_SIZE (4096)           // Define the specific size to trigger file saving
-#define FOLDER_NAME "received_files" // Define the folder name
-#define MSG_KEY 0x1234
+#define TARGET_SIZE                  (4096)           // Define the specific size to trigger file saving
+#define FOLDER_NAME                  "received_files" // Define the folder name
+
+
 
 /* Private macro ------------------------------------------------------------*/
 
@@ -61,7 +57,7 @@
 
 /* Private variables --------------------------------------------------------*/
 
-struct message msg;
+
 
 /* Payload definition */
 struct _payload
@@ -100,33 +96,51 @@ struct message
 };
 
 /* Globals */
-static struct rpmsg_endpoint rp_ept = {0};
-static struct _payload *i_payload;
-static int rnum = 0;
-static int err_cnt = 0;
-static char *svc_name = NULL;
-int force_stop = 0;
-pthread_cond_t cond;
-pthread_mutex_t mutex, rsc_mutex;
-static int file_counter = 1;     // Counter for file names
-static size_t buffer_size = 0;   // Counter for the current buffer size
-static char buffer[TARGET_SIZE]; // Buffer to hold data until it reaches TARGET_SIZE
-static int session_active = 0;
-static char session_uuid[37] = {0};
-int msgid;
+static struct    rpmsg_endpoint rp_ept = {0};
+static struct    _payload *i_payload;
+static int       rnum = 0;
+static int       err_cnt = 0;
+static char      *svc_name = NULL;
+int              force_stop = 0;
+pthread_cond_t   cond;
+pthread_mutex_t  mutex, rsc_mutex;
+static int       file_counter = 1;     // Counter for file names
+static size_t    buffer_size = 0;   // Counter for the current buffer size
+static char      buffer[TARGET_SIZE]; // Buffer to hold data until it reaches TARGET_SIZE
+static int       session_active = 0;
+static char      session_uuid[37] = {0};
 
-struct comm_arg ids[] = {
+
+struct comm_arg ids[] =
+ {
     {NULL, 0},
     {NULL, 1},
 };
 
-/* External functions */
+uint64_t  current_session_uid;
+
+
+/* From  HARVEST TO RPMSG*/
+
+key_t  rpmsg_tx_key    =RPMSG_TX_MSG_KEY;
+int    rpmsghook_tx_msgid;
+struct message rpmsghook_tx_msg;
+char   rpmsghook_ipcactive = 0;
+
+/* From RPMSG TO HARVEST*/
+key_t  rpmsg_rx_key    =RPMSG_RX_MSG_KEY;
+int    rpmsghook_rx_msgid;
+struct message        rpmsghook_rx_msg;
+char   rpmsghook_rx_ipcactive = 0;
+
+
+/* Public function prototypes -----------------------------------------------*/
+
 extern int init_system(void);
 extern void cleanup_system(void);
 
 /* Private function prototypes -----------------------------------------------*/
 
-/* Internal functions */
 static void rpmsg_service_bind(struct rpmsg_device *rdev, const char *name, uint32_t dest);
 static void rpmsg_service_unbind(struct rpmsg_endpoint *ept);
 static int rpmsg_service_cb0(struct rpmsg_endpoint *rp_ept, void *data, size_t len, uint32_t src, void *priv);
@@ -140,8 +154,12 @@ static char *sensor_data_to_string(SensorData *pSensors);
 static void send_harvest_message(uint32_t message);
 static void show_menu(int argc);
 
+static void bytes_to_uint64(const uint8_t *data, uint64_t *ertc);
+char generate_rpmsghook_tx_msgid(void);
+char generate_rpmsghook_rx_msgid(void);
+
 /*******************************************************************************
- * @name
+ * @name   blethread
  * @brief  Function handles the
  * @param
  * @retval
@@ -154,7 +172,7 @@ void *blethread(void *arg)
 }
 
 /*******************************************************************************
- * @name
+ * @name   app
  * @brief  Function handles the Application entry point 
  * @param
  * @retval
@@ -169,8 +187,8 @@ static int app(struct rpmsg_device *rdev, struct remoteproc *priv, unsigned long
     struct payload_info pi = {0};
     static int sighandled = 0;
 
-    LPRINTF("\n RPMSG_INFO: 1 - Send data to remote core, retrieve the echo");
-    LPRINTF("\n RPMSG_INFO:and validate its integrity ..");
+    // LPRINTF("\n RPMSG_INFO: 1 - Send data to remote core, retrieve the echo");
+    // LPRINTF("\n RPMSG_INFO:and validate its integrity ..");
 
     /* Initialization of the payload and its related information */
     if ((ret = payload_init(rdev, &pi)))
@@ -215,12 +233,6 @@ static int app(struct rpmsg_device *rdev, struct remoteproc *priv, unsigned long
         platform_poll(priv);
     }
 
-    // if (force_stop)
-    // {
-    //     LPRINTF("\nForce stopped. ");
-    //     goto error;
-    // }
-
     LPRINTF("\n RPMSG_INFO:RPMSG service has created.");
     memset(&(i_payload->data[0]), 0xA5, 1);
     ret = rpmsg_send(&rp_ept, i_payload, 1);
@@ -229,16 +241,11 @@ static int app(struct rpmsg_device *rdev, struct remoteproc *priv, unsigned long
         LPRINTF("\n RPMSG_INFO:Error sending data...%d", ret);
     }
 
-    // pthread_t tid;
-    // LPRINTF("___________Creating thread for BLE...");
-    // pthread_create(&tid, NULL, &blethread, NULL);
 
-    // if(tid)
-    //     pthread_join(tid, NULL);
 
     while (1)
     {
-        LPRINTF("\n RPMSG_INFO: YOU ARE IN WHILE LOOP__________________________________________________");
+        // LPRINTF("\n RPMSG_INFO: YOU ARE IN WHILE LOOP__________________________________________________");
         platform_poll(priv);       
         if (force_stop)
         {
@@ -255,7 +262,8 @@ error:
     /* Send shutdown message to remote */
     rpmsg_send(&rp_ept, &shutdown_msg, sizeof(int));
     sleep(1);
-    LPRINTF("\n RPMSG_INFO:Quitting application .. Echo test end");
+    LPRINTF("\n RPMSG_INFO:Quitting  RMP msg application and M33 core  ..");
+    LPRINTF("\n RPMSG_INFO:Shutdown command send to M33 core ... ");
 
     metal_free_memory(i_payload);
     return 0;
@@ -298,7 +306,7 @@ static void rpmsg_service_unbind(struct rpmsg_endpoint *ept)
 }
 
 /*******************************************************************************
- * @name
+ * @name   rpmsg_service_cb0
  * @brief  Function handles the
  * @param
  * @retval
@@ -315,65 +323,109 @@ static int rpmsg_service_cb0(struct rpmsg_endpoint *cb_rp_ept, void *data, size_
     //     return 0; // Ignore data if session is not active
     //  }
     SensorData *pSensors;
-    pSensors = (SensorData *)data;
+    pSensors   = (SensorData *)data;
     char *p_ch = (char *)data;
 
-    LPRINTF("\n RPMSG_INFO: received frame id %u \r", pSensors->FrameID);
-    LPRINTF("\n RPMSG_INFO: PIR ID: %u \r", pSensors->PIR_ID);
-    LPRINTF("\n RPMSG_INFO: PIR value: %u \r", pSensors->PIR_value);
-    LPRINTF("\n RPMSG_INFO: Load Cell ID: %u \r", pSensors->LOAD_ID);
-    LPRINTF("\n RPMSG_INFO: Load Cell status: %u \r", pSensors->LoadSensor_status);
-    LPRINTF("\n RPMSG_INFO: Load Cell value: %f \r", pSensors->loadcell_Value);
-    LPRINTF("\n RPMSG_INFO: IR Sensor ID: %u \r", pSensors->IR_ID);
-    LPRINTF("\n RPMSG_INFO: IR Sensor status: %u \r", pSensors->IRSensor_status);
-    LPRINTF("\n RPMSG_INFO: IR Temperature value: %f \r", pSensors->Temperature_value);
 
-    // Create directory if it doesn't exist
-    struct stat st = {0};
-    if (stat(FOLDER_NAME, &st) == -1)
+  switch (pSensors->FrameID)
     {
-        mkdir(FOLDER_NAME, 0700);
-    }
+   
+        case SENSOR_DATA_FRAME:
 
-    // Convert SensorData to a comma-separated string
-    char *sensor_str = sensor_data_to_string(pSensors);
-    size_t sensor_str_size = strlen(sensor_str) + 1; // +1 for newline character
+        LPRINTF("\n RPMSG_INFO: received frame id %u \r", pSensors->FrameID);
+        LPRINTF("\n RPMSG_INFO: PIR ID: %u \r",           pSensors->PIR_ID);
+        LPRINTF("\n RPMSG_INFO: PIR value: %u \r",        pSensors->PIR_value);
+        LPRINTF("\n RPMSG_INFO: Load Cell ID: %u \r",     pSensors->LOAD_ID);
+        LPRINTF("\n RPMSG_INFO: Load Cell status: %u \r", pSensors->LoadSensor_status);
+        LPRINTF("\n RPMSG_INFO: Load Cell value: %f \r",  pSensors->loadcell_Value);
+        LPRINTF("\n RPMSG_INFO: IR Sensor ID: %u \r",     pSensors->IR_ID);
+        LPRINTF("\n RPMSG_INFO: IR Sensor status: %u \r", pSensors->IRSensor_status);
+        LPRINTF("\n RPMSG_INFO: IR Temperature value: %f \r", pSensors->Temperature_value);
 
-    // Check if buffer can hold the new data, if not, flush the buffer
-    if (buffer_size + sensor_str_size > TARGET_SIZE)
-    {
-        char filename[256]; // Buffer for filename
-        snprintf(filename, sizeof(filename), "%s/%s_file%d.txt", FOLDER_NAME, session_uuid, file_counter);
-        FILE *file = fopen(filename, "w");
-        if (file)
+        // Create directory if it doesn't exist
+        struct stat st = {0};
+        if (stat(FOLDER_NAME, &st) == -1)
         {
-            fwrite(buffer, 1, buffer_size, file);
-            fclose(file);
-            LPRINTF("\n RPMSG_INFO:Data saved to %s", filename);
-            file_counter++;  // Increment file counter for next file
-            buffer_size = 0; // Reset buffer size
+            mkdir(FOLDER_NAME, 0700);
+        }
+
+        // Convert SensorData to a comma-separated string
+        char  *sensor_str        = sensor_data_to_string(pSensors);
+        size_t sensor_str_size   = strlen(sensor_str) + 1; // +1 for newline character
+
+        // Check if buffer can hold the new data, if not, flush the buffer
+        if (buffer_size + sensor_str_size > TARGET_SIZE)
+        {
+            char filename[256]; // Buffer for filename
+
+        // Convert uint64_t session id  to string representation for filename
+        snprintf(session_uuid, sizeof(session_uuid), "SESSION_%" PRIu64 , current_session_uid);
+
+
+            snprintf(filename, sizeof(filename), "%s/%s_file%d.txt", FOLDER_NAME, session_uuid, file_counter);
+            FILE *file = fopen(filename, "w");
+            if (file)
+            {
+                fwrite(buffer, 1, buffer_size, file);
+                fclose(file);
+                LPRINTF("\n RPMSG_INFO: Data saved to %s", filename);
+                file_counter++;  // Increment file counter for next file
+                buffer_size = 0; // Reset buffer size
+            }
+            else
+            {
+                LPERROR("\n RPMSG_INFO:Failed to open file for writing.");
+            }
+        }
+
+        // Add sensor_str to the buffer
+        memcpy(buffer + buffer_size, sensor_str, sensor_str_size - 1);
+        buffer[buffer_size + sensor_str_size - 1] = '\n'; // Add newline character
+        buffer_size += sensor_str_size;
+
+        // rnum = r_payload->num + 1;
+        // based on some flag/hook, we will invoke mqtt_send()
+        /* mqtt_send(pSensors, len) in JSON format */
+
+        /* file write here as per count value, fd */
+     break;
+
+     case PIR_WAKEUP_FRAME:
+
+        LPRINTF("\n RPMSG_INFO: received frame id %u \r", pSensors->FrameID);
+        LPRINTF("\n RPMSG_INFO: PIR ID: %u \r",           pSensors->PIR_ID);
+        LPRINTF("\n RPMSG_INFO: PIR value: %u \r",        pSensors->PIR_value);
+
+      // Clearing the msg
+       memset(&rpmsghook_rx_msg.text, 0, sizeof(rpmsghook_rx_msg.text));
+/* From RPMSG TO HARVEST*/
+        rpmsghook_rx_msg.message_type    = 1;                          // Message type can be used to differentiate messages if needed
+        rpmsghook_rx_msg.message_text[0] = M33_RPMSG_PIR_TRIGGER_CMD; // First byte is the command ID
+        rpmsghook_rx_msg.message_text[1] = pSensors->PIR_ID;
+        rpmsghook_rx_msg.message_text[1] = pSensors->PIR_value;
+ 
+
+        if (msgsnd(rpmsghook_rx_msgid, &rpmsghook_rx_msg, sizeof(rpmsghook_rx_msg.text), 0) == -1)
+        {
+            printf("\n RPMSG_INFO :Error, Not able to PIR wakeup  command to Harvest HOOK.\n");
         }
         else
         {
-            LPERROR("\n RPMSG_INFO:Failed to open file for writing.");
+            printf("\n RPMSG_INFO : sent PIR wakeup command  sent to Harvest HOOK = %s\n", common_msg.message_text);
+            printf("\n");
         }
+      
+
+     break;
+
+     default:
+     break;
     }
-
-    // Add sensor_str to the buffer
-    memcpy(buffer + buffer_size, sensor_str, sensor_str_size - 1);
-    buffer[buffer_size + sensor_str_size - 1] = '\n'; // Add newline character
-    buffer_size += sensor_str_size;
-
-    // rnum = r_payload->num + 1;
-    // based on some flag/hook, we will invoke mqtt_send()
-    /* mqtt_send(pSensors, len) in JSON format */
-
-    /* file write here as per count value, fd */
     return ret;
 }
 
 /*******************************************************************************
- * @name
+ * @name   payload_init
  * @brief  Function handles the
  * @param
  * @retval
@@ -405,7 +457,7 @@ static int payload_init(struct rpmsg_device *rdev, struct payload_info *pi)
 }
 
 /*******************************************************************************
- * @name
+ * @name   init_cond
  * @brief  Function handles the
  * @param
  * @retval
@@ -429,14 +481,14 @@ static void init_cond(void)
 void ble_queue_reception(void)
 {
     // LPRINTF("\n RPMSG_INFO:nside ble_queue_reception");
-    // LPRINTF("\n RPMSG_INFO:msgid = %d", msgid);
+    // LPRINTF("\n RPMSG_INFO:rpmsghook_tx_msgid = %d", rpmsghook_tx_msgid);
     // LPRINTF("\n RPMSG_INFO:msg = %s", &msg);
     // LPRINTF("\n RPMSG_INFO:msg.text = %d", sizeof(msg.text));
 
     // Clearing the msg
-    memset(&msg.text, 0, sizeof(msg.text));
+    memset(&rpmsghook_tx_msg.text, 0, sizeof(msg.text));
 
-    if (msgrcv(msgid, &msg, sizeof(msg), 1, IPC_NOWAIT) == -1)
+    if (msgrcv(rpmsghook_tx_msgid, &rpmsghook_tx_msg, sizeof(rpmsghook_tx_msg), 1, IPC_NOWAIT) == -1)
     {
         if (errno == ENOMSG)
         {
@@ -451,64 +503,105 @@ void ble_queue_reception(void)
     }
     else
     {
-        LPRINTF("\n RPMSG_INFO:IPC Success");
+            uint8_t command_id = rpmsghook_tx_msg.text[0];
+            uint8_t *data = (uint8_t *)rpmsghook_tx_msg.text + 1;
+
+
+            switch (command_id)
+            {
+
+            case HARVEST_ENABLE_DISABLE_CMD: /* Start & stop harvesting */
+
+
+            current_session_uid=0;
+            bytes_to_uint64(&data[1], &current_session_uid);
+            printf("\n RPMSG_INFO: Current session  id to start/stop session : %d\n", current_session_uid);
+
+                int result1 = rpmsg_send(&rp_ept, & msg.text, sizeof( msg.text));
+                if (result1 < 0)
+                {
+                LPRINTF("\n RPMSG_INFO:Error sending data start/Stop Command...%d", result1);
+                }
+                else
+                {   
+                LPRINTF("\n RPMSG_INFO:Session start/Stop Command received from BLE  sending to M33: ");
+                }
+
+                break;
+
+            case LOADCELL_TARE_SCALE_CMD: /* Load cell tare function */
+
+                int result2 = rpmsg_send(&rp_ept, & msg.text, sizeof( msg.text));
+                if (result2 < 0)
+                {
+                LPRINTF("\n RPMSG_INFO:Error sending Load cell tare Command ...%d", result2);
+                }
+                else
+                {
+                printf("\n RPMSG_INFO:Load cell tare Command received from BLE & sending to M33");
+                printf("\n RPMSG_INFO:Pls ensure no weight in scale during tare function,Delay 1seconds  need to included in mobile appliation ");
+                }
+
+        
+
+                break;
+
+            case LOADCELL_CALIB_WEIGHT_CMD: /* Load cell Calibration function */
+
+        
+                int result3 = rpmsg_send(&rp_ept, & msg.text, sizeof( msg.text));
+                if (result3 < 0)
+                {
+                LPRINTF("\n RPMSG_INFO:Error sending data (rpmsg_send)...%d", result3);
+                }
+                else
+                {
+                LPRINTF("\n RPMSG_INFO:Data sent successfully (rpmsg_send)...%d", result3);
+                }
+
+                printf("\n RPMSG_INFO:Load cell calibration Command received from BLE & sending to M33");
+                printf("\n RPMSG_INFO:Pls keep mentioned  weight on scale during calibration function,Delay 1seconds  need to included in mobile appliation ");
+                // data[0] -MSB ,data[1] -MSB  weight in grams
+
+                break;
+
+            case BOWL_RESTART_CMD: /* A55 Core restart*/   
+
+                printf("\n RPMSG_INFO:Reboot Command received from Harvest main Hook");    
+
+                break;
+
+            default:
+                // printf("\n RPMSG_INFO:invalid Command received from BLE & sending to M33");
+                break;
+            }
     }
 
-    uint8_t command_id = msg.text[0];
-    uint8_t *data = (uint8_t *)msg.text + 1;
+
+}
 
 
-    switch (command_id)
-    {
 
-    case HARVEST_ENABLE_DISABLE_CMD: /* Start & stop harvesting */
+/*******************************************************************************
+* @name   bytes_to_uint64
+* @brief  Function to convert 'bytes stream of 8 bytes' to
+*         a unsigned long long integer (64 bit integer).
+* @param  const uint8_t *data, uint64_t *ert
+* @retval none
+*****************************************************************************/
+static void bytes_to_uint64(const uint8_t *data, uint64_t *ertc)
+{
+	uint8_t *ptr;
+	ptr = (uint8_t *)ertc;
 
-        if (data[0] == 1)
-        {
-            session_active = 1;
-            // strncpy(session_uuid, (char *)data, 36);
-            // session_uuid[36] = '\0'; // Ensure null-termination
-            LPRINTF("\n -----------------------------------------------------------------------------------");
-            send_harvest_message(HARVEST_ENABLE);
-            printf("\n RPMSG_INFO:Session start Command received from BLE & sending to M33");
-        }
-        else if (data[0] == 0)
-        {
-            session_active = 0;
-            LPRINTF("\n -----------------------------------------------------------------------------------.");
-            send_harvest_message(HARVEST_DISABLE);
-            printf("\n RPMSG_INFO:Session Stop Command received from BLE  sending to M33: ");
-            buffer_size = 0; // Reset buffer size
-        }
-        break;
-
-    case LOADCELL_TARE_SCALE_CMD: /* Load cell tare function */
-
-        send_harvest_message(LOADCELL_TARE_SCALE);
-        printf("\n RPMSG_INFO:Load cell tare Command received from BLE & sending to M33");
-        printf("\n RPMSG_INFO:Pls ensure no weight in scale during tare function,Delay 1seconds  need to included in mobile appliation ");
-
-        break;
-
-    case LOADCELL_CALIB_WEIGHT_CMD: /* Load cell Calibration function */
-
-        send_harvest_message(LOADCELL_CALIB_WEIGHT);
-        printf("\n RPMSG_INFO:Load cell tare Command received from BLE & sending to M33");
-        printf("\n RPMSG_INFO:Pls keep mentioned  weight on scale during calibration function,Delay 1seconds  need to included in mobile appliation ");
-        // data[0] -MSB ,data[1] -MSB  weight in grams
-
-        break;
-
-    case A55_SHUTDOWN_CMD: /* A55 Core shutdown*/
-
-        send_harvest_message(A55CORE_SHUTDOWN);
-
-        break;
-
-    default:
-        // printf("\n RPMSG_INFO:invalid Command received from BLE & sending to M33");
-        break;
-    }
+	ptr[0] = data[0];
+	ptr[1] = data[1];
+	ptr[2] = data[2];
+	ptr[3] = data[3];
+	ptr[4] = data[4];
+	ptr[5] = data[5];
+	ptr[6] = data[6];
+	ptr[7] = data[7];
 }
 
 /*******************************************************************************
@@ -524,7 +617,8 @@ int main(int argc, char *argv[])
     unsigned long proc_id;
     unsigned long rsc_id;
     int i;
-    int ret = 0;
+    int ret     = 0;
+    char status = 0;
 
     /* Initialize HW system components */
     init_system();
@@ -549,18 +643,9 @@ int main(int argc, char *argv[])
         }
     }
 
-    key_t key;
-    
-    // key = ftok("RPMSG_HOOK", 15);
-    key = 5678;
-    
-    /* Message queue handling */
-    msgid = msgget(key, 0666 | IPC_CREAT);
-    if (msgid == -1)
-    {
-        perror("msgget");
-        exit(EXIT_FAILURE);
-    }
+    status  = generate_rpmsghook_tx_msgid();
+    status  = generate_rpmsghook_rx_msgid();
+
 
     while (!force_stop)
     {
@@ -575,22 +660,6 @@ int main(int argc, char *argv[])
         LPRINTF("\n RPMSG_INFO:launch communicate\n");
         launch_communicate(pattern);
 
-        // if (argc >= 2) break;
-
-        /*
-                if (msg.type == 1) { // StartSession message
-                    session_active = 1;
-                    strncpy(session_uuid, msg.text, 36);
-                    session_uuid[36] = '\0'; // Ensure null-termination
-                    printf("Session started with UUID: %s\n", session_uuid);
-                    send_harvest_message(HARVEST_ENABLE);
-                } else if (msg.type == 2) { // StopSession message
-                    session_active = 0;
-                    printf("Session stopped\n");
-                    send_harvest_message(HARVEST_DISABLE);
-                    buffer_size = 0; // Reset buffer size
-                }
-                */
     }
 
     for (i = 0; i < ARRAY_SIZE(ids); i++)
@@ -606,16 +675,11 @@ error_return:
 }
 
 /*******************************************************************************
- * @name
+ * @name   communicate
  * @brief  Function handles the
- * @param
- * @retval
+ * @param  arg - test conditions
+ * @retval None
  ********************************************************************************/
-/**
- * @fn communicate
- * @brief perform test communication
- * @param arg - test conditions
- */
 static void *communicate(void *arg)
 {
     struct comm_arg *p = (struct comm_arg *)arg;
@@ -830,3 +894,71 @@ static int wait_input(int argc, char *argv[])
 
     return pattern;
 }
+
+/*******************************************************************************
+ * @name   generate_rpmsghook_tx_msgid
+ * @brief  Function handles the  generation of rpmsghook_tx_msgid
+ * @param
+ * @retval
+ ********************************************************************************/
+char generate_rpmsghook_tx_msgid(void)
+{
+    /*From Harvest to RPMSG */
+
+    // Create message queue and return id
+    rpmsghook_tx_msgid = msgget(rpmsg_tx_key, 0666 | IPC_CREAT);
+
+    if (rpmsghook_tx_msgid == -1)
+    {
+        perror("RPMSG_INFO: RPMSG HOOK msgget failed");
+        printf("\n RPMSG_INFO:RPMSG HOOK msgget failed");
+        // exit(EXIT_FAILURE);
+        rpmsghook_ipcactive = 0;
+        return 0;
+    }
+    else
+    {
+        LPRINTF("\RPMSG_INFO: From Harvest to RPMSG  msgid created");
+    }
+
+    // Clearing the msg
+    memset(&rpmsghook_tx_msg.message_text, 0, sizeof(rpmsghook_tx_msg.message_text));
+    rpmsghook_ipcactive = 1;
+    return 1;
+}
+
+ /*******************************************************************************
+ * @name   generate_rpmsghook_rx_msgid
+ * @brief  Function handles the  generation of rpmsghook_rx_msgid
+ * @param
+ * @retval
+ ********************************************************************************/
+char generate_rpmsghook_rx_msgid(void)
+{
+    /*FROM RPMSG TO HARVEST */
+
+
+    // Create message queue and return id
+    rpmsghook_rx_msgid = msgget(rpmsg_rx_key, 0666 | IPC_CREAT);
+
+    if (rpmsghook_rx_msgid == -1)
+    {
+        perror("RPMSG_INFO: RPMSG HOOK rx  msgget failed");
+        printf("\n RPMSG_INFO:RPMSG HOOK  rx msgget failed");
+        // exit(EXIT_FAILURE);
+        rpmsghook_rx_ipcactive = 0;
+        return 0;
+    }
+    else
+    {
+        LPRINTF("\RPMSG_INFO: From RPMSG to Harvest msgid  created");
+    }
+
+    // Clearing the msg
+    memset(&rpmsghook_rx_msg.message_text, 0, sizeof(rpmsghook_rx_msg.message_text));
+    rpmsghook_rx_ipcactive = 1;
+    return 1;
+}
+
+
+ 
