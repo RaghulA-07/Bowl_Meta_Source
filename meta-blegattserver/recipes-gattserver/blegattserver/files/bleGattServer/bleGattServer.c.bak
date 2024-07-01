@@ -1,3 +1,14 @@
+ /*
+* @file    bleGattServer.c
+* @author  Nestle Firmware Team
+* @version V1.0.0
+* @date
+* @brief   Source file for BLE App  interface
+*/
+
+/* Standard Includes --------------------------------------------------------*/
+
+
 #include <glib.h>
 #include <stdio.h>
 #include <signal.h>
@@ -11,33 +22,58 @@
 #include "application.h"
 #include "advertisement.h"
 #include "utility.h"
-#include "parser.h"
-#include "CommandParser.h"
 #include <stdint.h>
 
-#define TAG "Main"
-#define SERVICE_UUID "00c74f02-d1bc-11ed-afa1-0242ac120002"
-#define NOTIFY_CHARACTERISTIC_UUID "207bdc30-c3cc-4a14-8b66-56ba8a826640"
-#define WRITE_CHARACTERISTIC_UUID "6765a69d-cd79-4df6-aad5-043df9425556"
-#define READ_CHARACTERISTIC_UUID "b6ab2ce3-a5aa-436a-817a-cc13a45aab76"
+/* Project Includes ---------------------------------------------------------*/
 
-#define MAX_MESSAGE_SIZE 100
+// #include "parser.h"
+#include "CommandParser.h"
+
+/* Private typedef ----------------------------------------------------------*/
+
+/* Private define -----------------------------------------------------------*/
+
+#define TAG                         "Main"
+#define SERVICE_UUID                "00c74f02-d1bc-11ed-afa1-0242ac120002" //   Service UUID
+#define NOTIFY_CHARACTERISTIC_UUID  "207bdc30-c3cc-4a14-8b66-56ba8a826640" // 	Notify, Notification Characteristics: (optional-not used )
+#define WRITE_CHARACTERISTIC_UUID   "6765a69d-cd79-4df6-aad5-043df9425556" //	Mobile application TX, Write Characteristics:
+#define READ_CHARACTERISTIC_UUID    "b6ab2ce3-a5aa-436a-817a-cc13a45aab76" //   Mobile Application RX, Read Characteristics:
+
+#define MAX_MESSAGE_SIZE             100
+
+/* Private macro ------------------------------------------------------------*/
+
+/* Public variables ---------------------------------------------------------*/
+
+/* Private variables --------------------------------------------------------*/
 
 struct message {
     long message_type;
     uint8_t message_text[MAX_MESSAGE_SIZE];
 };
 
-guint8 ReadArray[100] = {};
-guint8 NotifyArray[100] = {};
+guint8 ReadArray[100]        = {};
+guint8 NotifyArray[100]      = {};
 
-GMainLoop *loop = NULL;
-Adapter *default_adapter = NULL;
+GMainLoop *loop              = NULL;
+Adapter *default_adapter     = NULL;
 Advertisement *advertisement = NULL;
-Application *app = NULL;
+Application *app             = NULL;
+
 int msgid;
 
-void readCallback(const uint8_t *data, size_t data_length) {
+
+/* Private function prototypes -----------------------------------------------*/
+
+
+/*******************************************************************************
+* @name    
+* @brief  Function handles the   
+* @param   
+* @retval  
+********************************************************************************/
+void readCallback(const uint8_t *data, size_t data_length)
+ {
     printf("\n BLE_HOOK_INFO :Read Callback: ");
     for (size_t i = 0; i < data_length; ++i) {
         printf("%02X ", data[i]);
@@ -46,7 +82,14 @@ void readCallback(const uint8_t *data, size_t data_length) {
     printf("\n");
 }
 
-void notifyCallback(const uint8_t *data, size_t data_length) {
+/*******************************************************************************
+* @name    
+* @brief  Function handles the   
+* @param   
+* @retval  
+********************************************************************************/
+void notifyCallback(const uint8_t *data, size_t data_length)
+ {
     printf("\n BLE_HOOK_INFO :Notify Callback: ");
     for (size_t i = 0; i < data_length; ++i) {
         printf("%02X ", data[i]);
@@ -55,11 +98,26 @@ void notifyCallback(const uint8_t *data, size_t data_length) {
     printf("\n");
 }
 
-void on_powered_state_changed(Adapter *adapter, gboolean state) {
+/*******************************************************************************
+* @name    
+* @brief  Function handles the   
+* @param   
+* @retval  
+********************************************************************************/
+void on_powered_state_changed(Adapter *adapter, gboolean state)
+ {
     log_debug(TAG, "powered '%s' (%s)", state ? "on" : "off", binc_adapter_get_path(adapter));
 }
 
-void on_central_state_changed(Adapter *adapter, Device *device) {
+
+/*******************************************************************************
+* @name    
+* @brief  Function handles the   
+* @param   
+* @retval  
+********************************************************************************/
+void on_central_state_changed(Adapter *adapter, Device *device) 
+{
     char *deviceToString = binc_device_to_string(device);
     log_debug(TAG, deviceToString);
     g_free(deviceToString);
@@ -73,6 +131,12 @@ void on_central_state_changed(Adapter *adapter, Device *device) {
     }
 }
 
+/*******************************************************************************
+* @name    
+* @brief  Function handles the   
+* @param   
+* @retval  
+********************************************************************************/
 const char *on_local_char_read(const Application *application, const char *address, const char *service_uuid, const char *char_uuid) {
     if (g_str_equal(service_uuid, SERVICE_UUID) && g_str_equal(char_uuid, READ_CHARACTERISTIC_UUID)) {
         GByteArray *byteArray = g_byte_array_sized_new(ReadArray[1]);
@@ -82,6 +146,13 @@ const char *on_local_char_read(const Application *application, const char *addre
     }
     return BLUEZ_ERROR_REJECTED;
 }
+
+/*******************************************************************************
+* @name    
+* @brief  Function handles the   
+* @param   
+* @retval  
+********************************************************************************/
 
 const char *on_local_char_write(const Application *application, const char *address, const char *service_uuid,
                           const char *char_uuid, GByteArray *byteArray) {
@@ -104,6 +175,13 @@ const char *on_local_char_write(const Application *application, const char *addr
     return NULL;
 }
 
+/*******************************************************************************
+* @name    
+* @brief  Function handles the   
+* @param   
+* @retval  
+********************************************************************************/
+
 void on_local_char_start_notify(const Application *application, const char *service_uuid, const char *char_uuid) {
     log_debug(TAG, "on start notify");
     if (g_str_equal(service_uuid, SERVICE_UUID) && g_str_equal(char_uuid, NOTIFY_CHARACTERISTIC_UUID)) {
@@ -115,9 +193,23 @@ void on_local_char_start_notify(const Application *application, const char *serv
     }
 }
 
+/*******************************************************************************
+* @name     
+* @brief  Function handles the   
+* @param   
+* @retval  
+********************************************************************************/
+
 void on_local_char_stop_notify(const Application *application, const char *service_uuid, const char *char_uuid) {
     log_debug(TAG, "on stop notify");
 }
+
+/*******************************************************************************
+* @name     
+* @brief  Function handles the   
+* @param   
+* @retval  
+********************************************************************************/
 
 gboolean callback(gpointer data) {
     if (app != NULL) {
@@ -140,6 +232,12 @@ gboolean callback(gpointer data) {
     return FALSE;
 }
 
+/*******************************************************************************
+* @name     
+* @brief  Function handles the   
+* @param   
+* @retval  
+********************************************************************************/
 static void cleanup_handler(int signo) {
     if (signo == SIGINT) {
         log_error(TAG, "received SIGINT");
@@ -147,7 +245,16 @@ static void cleanup_handler(int signo) {
     }
 }
 
-int main(void) {
+
+/*******************************************************************************
+* @name     
+* @brief  Function handles the   
+* @param   
+* @retval  
+********************************************************************************/
+
+int main(void)
+ {
     // Get a DBus connection
     GDBusConnection *dbusConnection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, NULL);
 
@@ -162,8 +269,10 @@ int main(void) {
     default_adapter = binc_adapter_get_default(dbusConnection);
 
     // Generate unique key
-    key_t key = ftok("progfile", 65);
+    // key_t key = ftok("BLE_HOOK", 65);
 
+    key_t key = 1234;
+    
     // Create message queue and return id
     msgid = msgget(key, 0666 | IPC_CREAT);
 

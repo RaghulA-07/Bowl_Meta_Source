@@ -63,13 +63,20 @@ int main()
 {
     LPRINTF("\n VIDEO_HOOK: Started");
 
-    const char *script_name = "./videostream.sh 0 D70 &";
+    const char *script_name = "./videostream.sh 0 D10 &";
 
     // const char *kill_command = "kill $(ps | grep 'gst-launch-1.0' | awk '{print $2}')";
 
-    const char *kill_command = "kill -15 $(echo $(pidof gst-launch-1.0))";
+    // const char *kill_command = "kill -15 $(echo $(pidof gst-launch-1.0))";
+
+    const char *kill_command = "kill -SIGINT $(echo $(pidof gst-launch-1.0))";
+
+    // Command to terminate the script using pkill
+    // char command[256];
+    // snprintf(command, sizeof(command), "kill $(ps aux | grep 'gst-launch-1.0' | awk '{print $2}')");
 
     // Generate unique key
+    // key = ftok("VIDEO_HOOK", 12);
     key = 2945;
 
     // Create message queue and return id
@@ -149,17 +156,11 @@ int main()
                 }
                 break;
 
-            case BOWL_RESTART_CMD: /* A55 Core restart*/   
+            case A55_SHUTDOWN_CMD: /* A55 Core shutdown*/
 
-            printf("\n VIDEO_HOOK:Reboot Command received from Harvest main Hook");    
+                printf("\n VIDEO_HOOK: Shutdown Command received from Harvest main Hook");
 
-            break;
-            
-            case M33_RPMSG_PIR_TRIGGER_CMD: /* PIR Trigger from M33 Core */
-
-            printf("\n VIDEO_HOOK:PIR Sensor Trigger Command received from Harvest main Hook");    
-
-            break;
+                break;
 
             default:
                 // printf("\n RPMSG_INFO:invalid Command received from BLE & sending to M33");

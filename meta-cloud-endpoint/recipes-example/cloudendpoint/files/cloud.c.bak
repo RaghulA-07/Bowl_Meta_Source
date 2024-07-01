@@ -35,7 +35,7 @@
 #define PROCESSED_FILES         "processed_files.inc"  // File to store processed file names
 #define AZURE_STORAGE_ACCOUNT   "namsprdigsoluseasta"
 #define AZURE_CONTAINER_NAME    "pet-datalake"
-#define AZURE_SAS_TOKEN         "sp=racwl&st=2024-05-31T18:30:00Z&se=2024-09-30T18:29:59Z&spr=https&sv=2022-11-02&sr=c&sig=XysWv05NdnaBzIx3iaYI1%2BUsCVjYjAlgTMVTypN%2Bihw%3D"
+#define AZURE_SAS_TOKEN         "sp=r&st=2024-06-24T06:45:15Z&se=2024-08-31T14:45:15Z&spr=https&sv=2022-11-02&sr=c&sig=hJCm06E7aadDCl6320quoT7rqUYNuIXO2rkTnFSJzxI%3D"
 #define AZURE_BLOB_NAME         "landing/dog_bowl_test"
 
 /* Private macro ------------------------------------------------------------*/
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
                         if (ent->d_type == DT_REG)
                         { // Check if it's a regular file
                             if (!file_already_processed(ent->d_name) &&
-                                (strstr(ent->d_name, ".wav") != NULL || strstr(ent->d_name, ".mp4") != NULL || strstr(ent->d_name, ".jpg") != NULL || strstr(ent->d_name, ".jpeg") != NULL || strstr(ent->d_name, ".txt") != NULL) &&
+                                (strstr(ent->d_name, ".mp4") != NULL || strstr(ent->d_name, ".jpg") != NULL || strstr(ent->d_name, ".jpeg") != NULL || strstr(ent->d_name, ".txt") != NULL) &&
                                 is_file_complete(folder_path, ent->d_name))
                             {
                                 upload_file(folder_path, ent->d_name);
@@ -255,17 +255,11 @@ void process_ipc_queue_reception(void)
                 break;
 
 
-            case BOWL_RESTART_CMD: /* A55 Core restart*/   
+            case A55_SHUTDOWN_CMD: /* A55 Core shutdown*/   
 
-              printf("\n CLOUD_HOOK_INFO:Reboot Command received from Harvest main Hook");    
+            printf("\n CLOUD_HOOK_INFO:Shutdown Command received from Harvest main Hook");    
 
-            break;
-
-            case M33_RPMSG_PIR_TRIGGER_CMD: /* PIR Trigger from M33 Core */
-
-            printf("\n CLOUD_HOOK_INFO:PIR Sensor Trigger Command received from Harvest main Hook");    
-
-            break;
+                break;
 
             /* Future commands need to be added here ..................*/
 
@@ -288,10 +282,6 @@ void upload_file(const char *folder_path, const char *file_name)
     if (strstr(file_name, ".mp4") != NULL)
     {
         content_type = "Content-Type: video/mp4";
-    }
-    else if (strstr(file_name, ".wav") != NULL)
-    {
-        content_type = "Content-Type: audio/wav";
     }
     else if (strstr(file_name, ".txt") != NULL)
     {
@@ -432,7 +422,7 @@ void record_processed_file(const char *file_name)
     if (file)
     {
         printf("\n CLOUD_HOOK_INFO: %s - file is processed and recorded", file_name);
-        fprintf(file, "%s\n", file_name);
+        // fprintf(file, "%s\n", file_name);
         fclose(file);
     }
 }

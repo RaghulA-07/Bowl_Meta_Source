@@ -43,48 +43,40 @@ struct message
 
 int bowl_harvestingstatus = 0;
 
-key_t  blekey;
-int    blehook_msgid;
+key_t blekey;
+int blehook_msgid;
 struct message blehook_msg;
-char   blehook_ipcactive = 0;
+char blehook_ipcactive = 0;
 
-/* From  HARVEST TO RPMSG*/
-key_t  rpmsg_tx_key    =RPMSG_TX_MSG_KEY;
-int    rpmsghook_tx_msgid;
-struct message rpmsghook_tx_msg;
-char   rpmsghook_ipcactive = 0;
+key_t rpmsgkey;
+int rpmsghook_msgid;
+struct message rpmsghook_msg;
+char rpmsghook_ipcactive = 0;
 
-
-/* From RPMSG TO HARVEST*/
-key_t  rpmsg_rx_key    =RPMSG_RX_MSG_KEY;
-int    rpmsghook_rx_msgid;
-struct message rpmsghook_rx_msg;
-char   rpmsghook_rx_ipcactive = 0;
-
-key_t  mickey           =MIC_TX_IPC_MSG_KEY;
-int    michook_msgid;
+key_t mickey;
+int michook_msgid;
 struct message michook_msg;
-char   michook_ipcactive = 0;
+char michook_ipcactive = 0;
 
-key_t  radarkey        =RADAR_TX_IPC_MSG_KEY;
-int    radarhook_msgid;
+key_t radarkey;
+int radarhook_msgid;
 struct message radarhook_msg;
-char   radarhook_ipcactive = 0;
+char radarhook_ipcactive = 0;
 
-key_t  videokey        =VIDEO_TX_IPC_MSG_KEY;
-int    videohook_msgid;
+key_t videokey;
+int videohook_msgid;
 struct message videohook_msg;
-char   videohook_ipcactive = 0;
+char videohook_ipcactive = 0;
 
-key_t  cloudkey       =CLOUD_TX_IPC_MSG_KEY;
-int    cloudhook_msgid;
+key_t cloudkey;
+int cloudhook_msgid;
 struct message cloudhook_msg;
-char   cloudhook_ipcactive = 0;
+char cloudhook_ipcactive = 0;
 
-key_t  edgekey       =EDGE_TX_IPC_MSG_KEY;
-int    edgehook_msgid;
+key_t edgekey;
+int edgehook_msgid;
 struct message edgehook_msg;
-char   edgehook_ipcactive = 0;
+char edgehook_ipcactive = 0;
 
 struct message common_msg;
 
@@ -93,19 +85,16 @@ uint64_t  current_session_uid;
 /* Private function prototypes -----------------------------------------------*/
 
 void process_blehook_receptionmsg(void);
-void process_rpmsghook_receptionmsg(void);
 char generate_videohookmsgid(void);
 char generate_radarhookmsgid(void);
 char generate_michookmsgid(void);
 char generate_blehookmsgid(void);
 char generate_cloudhookmsgid(void);
 char generate_edgehookmsgid(void);
-char generate_rpmsghook_tx_msgid(void);
-char generate_rpmsghook_rx_msgid(void);
+char generate_rpmsghookmsgid(void);
 
 void send_harvestcmd(const uint8_t *data);
 static void bytes_to_uint64(const uint8_t *data, uint64_t *ertc);
-void send_cmd_to_hooks( uint8_t hookname ,uint8_t cmd,const uint8_t *data);
 
 /*******************************************************************************
  * @name   main
@@ -119,22 +108,16 @@ int main(void)
     char status = 0;
 
     LPRINTF("\n HARVEST_HOOK: Starting harvest main application.......");
-
-    /*Transmission Hook IDS */
     status  = generate_blehookmsgid();
-    status  = generate_rpmsghook_tx_msgid();
+    status  = generate_rpmsghookmsgid();
     status  = generate_michookmsgid();
     status  = generate_radarhookmsgid();
     status  = generate_videohookmsgid();
     status  = generate_cloudhookmsgid();
-    status  = generate_rpmsghook_rx_msgid();
-
-    /*Reception Hook IDS */
 
     while (1)
     {
         process_blehook_receptionmsg();
-        process_rpmsghook_receptionmsg();
     }
 
     return 0;
@@ -197,11 +180,11 @@ void process_blehook_receptionmsg(void)
 
                     case CMD_DO_LOADCELL_TARE: /* Load cell tare function */
 
-                    rpmsghook_tx_msg.message_type = 1;                          // Message type can be used to differentiate messages if needed
-                    rpmsghook_tx_msg.message_text[0] = LOADCELL_TARE_SCALE_CMD; // First byte is the command ID
-                    rpmsghook_tx_msg.message_text[1] = 0;
+                    rpmsghook_msg.message_type = 1;                          // Message type can be used to differentiate messages if needed
+                    rpmsghook_msg.message_text[0] = LOADCELL_TARE_SCALE_CMD; // First byte is the command ID
+                    rpmsghook_msg.message_text[1] = 0;
 
-                    if (msgsnd(rpmsghook_tx_msgid, &rpmsghook_tx_msg, sizeof(rpmsghook_tx_msg.message_text), 0) == -1)
+                    if (msgsnd(rpmsghook_msgid, &rpmsghook_msg, sizeof(rpmsghook_msg.message_text), 0) == -1)
                     {
                     printf("\n HARVEST_HOOK: Error, Not able to send load cell tare command to RPMSG HooK.\n");
 
@@ -210,7 +193,7 @@ void process_blehook_receptionmsg(void)
                     }
                     else
                     {
-                    printf("\n HARVEST_HOOK: send load cell tare command  sent to RPMSG HooK = %s\n", rpmsghook_tx_msg.message_text);
+                    printf("\n HARVEST_HOOK: send load cell tare command  sent to RPMSG HooK = %s\n", rpmsghook_msg.message_text);
                     printf("\n");
                     }
 
@@ -218,21 +201,21 @@ void process_blehook_receptionmsg(void)
 
                     case CMD_DO_LOADCELL_CALIBRATION: /* Load cell Calibration function */
 
-                    rpmsghook_tx_msg.message_type = 1;                          // Message type can be used to differentiate messages if needed
-                    rpmsghook_tx_msg.message_text[0] = LOADCELL_CALIB_WEIGHT_CMD; // First byte is the command ID
-                    rpmsghook_tx_msg.message_text[1] = data[1];                 // MSB
-                    rpmsghook_tx_msg.message_text[2] = data[2];                 // LSB
+                    rpmsghook_msg.message_type = 1;                          // Message type can be used to differentiate messages if needed
+                    rpmsghook_msg.message_text[0] = LOADCELL_CALIB_WEIGHT_CMD; // First byte is the command ID
+                    rpmsghook_msg.message_text[1] = data[1];                 // MSB
+                    rpmsghook_msg.message_text[2] = data[2];                 // LSB
 
-                    if (msgsnd(rpmsghook_tx_msgid, &rpmsghook_tx_msg, sizeof(rpmsghook_tx_msg.message_text), 0) == -1)
+                    if (msgsnd(rpmsghook_msgid, &rpmsghook_msg, sizeof(rpmsghook_msg.message_text), 0) == -1)
                     {
                     printf("\n HARVEST_HOOK :Error, Not able to send load cell tare command to RPMSG HOOK.\n");
 
-                   // perror("msgsnd failed");
-                    //exit(EXIT_FAILURE);
+                    perror("msgsnd failed");
+                    exit(EXIT_FAILURE);
                     }
                     else
                     {
-                    printf("\n HARVEST_HOOK : send load cell tare command  sent to RPMSG HOOK = %s\n", rpmsghook_tx_msg.message_text);
+                    printf("\n HARVEST_HOOK : send load cell tare command  sent to RPMSG HOOK = %s\n", rpmsghook_msg.message_text);
                     printf("\n");
                     }
 
@@ -275,63 +258,6 @@ void process_blehook_receptionmsg(void)
 }
 
 /*******************************************************************************
- * @name   rpmsg_queue_reception
- * @brief  Function handles the
- * @param
- * @retval
- ********************************************************************************/
-void rpmsg_queue_reception(void)
-{
-     // Clearing the msg
-    memset(&rpmsghook_rx_msg.text, 0, sizeof(rpmsghook_rx_msg.text));
-
-    if (msgrcv(rpmsghook_rx_msgid, &rpmsghook_rx_msg, sizeof(rpmsghook_rx_msg), 1, IPC_NOWAIT) == -1)
-    {
-        if (errno == ENOMSG)
-        {
-            // LPRINTF("\n RPMSG_INFO:IPC No message available");
-        }
-        else
-        {
-            LPRINTF("\n HARVEST_HOOK: RPMSG RX IPC Error");
-            perror("msgrcv");
-            exit(EXIT_FAILURE);
-        }
-    }
-    else
-    {
-
-    uint8_t command_id = rpmsghook_rx_msg.text[0];
-    uint8_t *data      = (uint8_t *)rpmsghook_rx_msg.text + 1;
-
-
-    switch (command_id)
-    {
-
-    case M33_RPMSG_PIR_TRIGGER_CMD: /* PIR Trigger from M33 Core */
-
-    printf("\n HARVEST_HOOK: PIR Sensor Trigger Command received from RPMSG Hook");        
-
-    send_cmd_to_hooks( RADAR_HOOK ,M33_RPMSG_PIR_TRIGGER_CMD,&data[1]);
-    send_cmd_to_hooks( CLOUD_HOOK ,M33_RPMSG_PIR_TRIGGER_CMD,&data[1]);
-    send_cmd_to_hooks( MIC_HOOK   ,M33_RPMSG_PIR_TRIGGER_CMD,&data[1]);
-    send_cmd_to_hooks( VIDEO_HOOK ,M33_RPMSG_PIR_TRIGGER_CMD,&data[1]);
-
-    break;
-
-    default:
-        // printf("\n RPMSG_INFO:invalid Command received from BLE & sending to M33");
-    break;
-    }
-
-       
-    }
-
-   
-}
-
-
-/*******************************************************************************
  * @name    send_harvestcmd
  * @brief   Function handles the  sending harvest cmd to all hooks
  * @param   const uint8_t *data
@@ -359,7 +285,7 @@ void send_harvestcmd(const uint8_t *data)
     common_msg.message_text[9] = data[8];                    //Session ID Byte 7
 
 
-    if (msgsnd(rpmsghook_tx_msgid, &common_msg, sizeof(common_msg.message_text), 0) == -1)
+    if (msgsnd(rpmsghook_msgid, &common_msg, sizeof(common_msg.message_text), 0) == -1)
     {
         printf("\n HARVEST_HOOK :Error, Not able to send harvest start/stop command to RPMSG HOOK.\n");
     }
@@ -411,126 +337,6 @@ void send_harvestcmd(const uint8_t *data)
     }
 }
 
-/*******************************************************************************
- * @name    send_cmd_to_hooks
- * @brief   Function handles the  sending harvest cmd to all hooks
- * @param   const uint8_t *data
- * @retval  None
- ********************************************************************************/
-void send_cmd_to_hooks( uint8_t hookname ,uint8_t cmd,const uint8_t *data)
-{
-
-   // Clearing the msg
-    memset(&common_msg.message_text, 0, sizeof(common_msg.message_text)); 
-
-    common_msg.message_type    = 1;                          // Message type can be used to differentiate messages if needed
-    common_msg.message_text[0] = cmd;                       // First byte is the command ID
-    common_msg.message_text[1] = data[0];                     
-    common_msg.message_text[2] = data[1];                     
-	common_msg.message_text[3] = data[2];                     
-	common_msg.message_text[4] = data[3];                      
-	common_msg.message_text[5] = data[4];                     
-	common_msg.message_text[6] = data[5];                     
-	common_msg.message_text[7] = data[6];                     
-	common_msg.message_text[8] = data[7];                     
-    common_msg.message_text[9] = data[8];     
-
-
-        switch (hookname)
-        {
-
-        case  RPMSG_HOOK :
-
-            if (msgsnd(rpmsghook_tx_msgid, &common_msg, sizeof(common_msg.message_text), 0) == -1)
-            {
-            printf("\n HARVEST_HOOK :Error, Not able to send command to RPMSG HOOK.\n");
-            }
-            else
-            {
-            printf("\n HARVEST_HOOK : sent command to RPMSG HOOK = %s\n", common_msg.message_text);
-            printf("\n");
-            }
-
-        break;
-
-        case  MIC_HOOK :
-
-            if (msgsnd(michook_msgid, &common_msg, sizeof(common_msg.message_text), 0) == -1)
-            {
-            printf("\n HARVEST_HOOK :Error, Error, Not able to send command to MIC HOOK.\n");
-            }
-            else
-            {
-            printf("\n HARVEST_HOOK : sent command to MIC HOOK = %s\n", common_msg.message_text);
-            printf("\n");
-            }
-
-        break;
-
-        case  RADAR_HOOK :
-
-            if (msgsnd(radarhook_msgid, &common_msg, sizeof(common_msg.message_text), 0) == -1)
-            {
-            printf("\n HARVEST_HOOK :Error,  Not able to send command to radar HOOK.\n");
-            }
-            else
-            {
-            printf("\n HARVEST_HOOK : sent command to Radar HOOK = %s\n", common_msg.message_text);
-            printf("\n");
-            }
-
-        break;
-
-        case  VIDEO_HOOK :
-
-            if (msgsnd(videohook_msgid, &common_msg, sizeof(common_msg.message_text), 0) == -1)
-            {
-            printf("\n HARVEST_HOOK :Error, Not able to send command to video HOOK.\n");
-            }
-            else
-            {
-            printf("\n HARVEST_HOOK : sent command to video HOOK = %s\n", common_msg.message_text);
-
-            printf("\n");
-            }
-
-        break;
-
-        case  CLOUD_HOOK :
-
-            if (msgsnd(cloudhook_msgid, &common_msg, sizeof(common_msg.message_text), 0) == -1)
-            {
-            printf("\n HARVEST_HOOK :Error, Not able to send command tocloud HOOK.\n");
-            }
-            else
-            {
-            printf("\n HARVEST_HOOK : sent command to cloud HOOK = %s\n", common_msg.message_text);
-            printf("\n");
-            }
-
-        break;
-
-        case  EDGE_HOOK :
-          printf("\n HARVEST_HOOK :Error, Not applicable to edge hook as of now .\n");
-        break;
-
-        case  BLE_HOOK :
-         printf("\n HARVEST_HOOK :Error, Not applicable to BLE hook as of now .\n");
-        break;
-
-        case  HARVEST_HOOK :
-            printf("\n HARVEST_HOOK :Error, Not applicable to the same harvesting hook   .\n");
-        break;
-
-        default :
-        printf("\n HARVEST_HOOK :Error, sending to undefined  hook   .\n");
-        break;
-
-        } 
-
-
-}
-
 
 /*******************************************************************************
 * @name   bytes_to_uint64
@@ -562,6 +368,10 @@ static void bytes_to_uint64(const uint8_t *data, uint64_t *ertc)
  ********************************************************************************/
 char generate_blehookmsgid(void)
 {
+    // Generate unique key
+    // blekey = ftok("BLE_HOOK", 65);
+    blekey = 1234;
+
     // Create message queue and return id
     blehook_msgid = msgget(blekey, 0666 | IPC_CREAT);
 
@@ -593,6 +403,11 @@ char generate_blehookmsgid(void)
  ********************************************************************************/
 char generate_michookmsgid(void)
 {
+
+    // Generate unique key
+    // mickey = ftok("MIC_HOOK", 10);
+    mickey = 1393;
+
     // Create message queue and return id
     michook_msgid = msgget(mickey, 0666 | IPC_CREAT);
 
@@ -623,6 +438,11 @@ char generate_michookmsgid(void)
  ********************************************************************************/
 char generate_radarhookmsgid(void)
 {
+
+    // Generate unique key
+    // radarkey = ftok("RADAR_HOOK", 11);
+    radarkey = 1814;
+
     // Create message queue and return id
     radarhook_msgid = msgget(radarkey, 0666 | IPC_CREAT);
 
@@ -653,7 +473,11 @@ char generate_radarhookmsgid(void)
  ********************************************************************************/
 char generate_videohookmsgid(void)
 {
-   // Create message queue and return id
+
+    // Generate unique key
+    // videokey = ftok("VIDEO_HOOK", 12);
+    videokey = 2945;
+    // Create message queue and return id
     videohook_msgid = msgget(videokey, 0666 | IPC_CREAT);
 
     if (videohook_msgid == -1)
@@ -683,7 +507,12 @@ char generate_videohookmsgid(void)
  ********************************************************************************/
 char generate_cloudhookmsgid(void)
 {
-       // Create message queue and return id
+
+    // Generate unique key
+    // cloudkey = ftok("CLOUD_HOOK", 13);
+    cloudkey = 3254;
+
+    // Create message queue and return id
     cloudhook_msgid = msgget(cloudkey, 0666 | IPC_CREAT);
 
     if (cloudhook_msgid == -1)
@@ -713,6 +542,10 @@ char generate_cloudhookmsgid(void)
  ********************************************************************************/
 char generate_edgehookmsgid(void)
 {
+
+    // Generate unique key
+    edgekey = ftok("EDGE_HOOK", 14);
+
     // Create message queue and return id
     edgehook_msgid = msgget(edgekey, 0666 | IPC_CREAT);
 
@@ -734,18 +567,29 @@ char generate_edgehookmsgid(void)
     edgehook_ipcactive = 1;
     return 1;
 }
+
+key_t rpmsgkey;
+// int   ;
+struct message;
+// char    =0;
+
 /*******************************************************************************
- * @name   generate_rpmsghook_tx_msgid
+ * @name   generate_rpmsghookmsgid
  * @brief  Function handles the  generation of Msgid
  * @param
  * @retval
  ********************************************************************************/
-char generate_rpmsghook_tx_msgid(void)
+char generate_rpmsghookmsgid(void)
 {
-    // Create message queue and return id
-    rpmsghook_tx_msgid = msgget(rpmsg_tx_key, 0666 | IPC_CREAT);
 
-    if (rpmsghook_tx_msgid == -1)
+    // Generate unique key
+    // rpmsgkey = ftok("RPMSG_HOOK", 15);
+    rpmsgkey = 5678;
+
+    // Create message queue and return id
+    rpmsghook_msgid = msgget(rpmsgkey, 0666 | IPC_CREAT);
+
+    if (rpmsghook_msgid == -1)
     {
         perror("HARVEST_HOOK: RPMSG HOOK msgget failed");
         printf("\n HARVEST_HOOK:RPMSG HOOK msgget failed");
@@ -759,39 +603,7 @@ char generate_rpmsghook_tx_msgid(void)
     }
 
     // Clearing the msg
-    memset(&rpmsghook_tx_msg.message_text, 0, sizeof(rpmsghook_tx_msg.message_text));
+    memset(&rpmsghook_msg.message_text, 0, sizeof(rpmsghook_msg.message_text));
     rpmsghook_ipcactive = 1;
-    return 1;
-}
-
-
-
- /*******************************************************************************
- * @name   generate_rpmsghook_rx_msgid
- * @brief  Function handles the  generation of Msgid
- * @param
- * @retval
- ********************************************************************************/
-char generate_rpmsghook_rx_msgid(void)
-{
-    // Create message queue and return id
-    rpmsghook_rx_msgid = msgget(rpmsg_rx_key, 0666 | IPC_CREAT);
-
-    if (rpmsghook_rx_msgid == -1)
-    {
-        perror("HARVEST_HOOK: RPMSG HOOK rx  msgget failed");
-        printf("\n HARVEST_HOOK:RPMSG HOOK  rx msgget failed");
-        // exit(EXIT_FAILURE);
-        rpmsghook_rx_ipcactive = 0;
-        return 0;
-    }
-    else
-    {
-        LPRINTF("\nHARVEST_HOOK: RPMSG HOOK rx  created");
-    }
-
-    // Clearing the msg
-    memset(&rpmsghook_rx_msg.message_text, 0, sizeof(rpmsghook_rx_msg.message_text));
-    rpmsghook_rx_ipcactive = 1;
     return 1;
 }

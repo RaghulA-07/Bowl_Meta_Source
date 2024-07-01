@@ -28,24 +28,29 @@
 
 /*Commands between BLE Mobile application to  A55 BLE Hook*/
 
-#define	CMD_GET_DEVICE_INFO                 (0x02)
-#define	CMD_GET_EPOCH_CLOCK                 (0x05)
-#define	CMD_SET_EPOCH_CLOCK                 (0x06)
-#define CMD_HARVEST_ENABLE_DISABLE          (0x10)   //start Or Stop Harvesting
-#define	CMD_GET_DASHBOARD_INFO              (0x16)
-#define CMD_SET_WIFI_CREDENTIAL             (0x1C) 
-#define	CMD_GET_WIFI_CREDENTIAL             (0x1D)
+ 
+#define	CMD_GET_EPOCH_CLOCK                 (0x05)  
+#define	CMD_SET_EPOCH_CLOCK                 (0x06) 
+#define	CMD_FACTORY_RESET                   (0x0C)
+#define	CMD_DEVICE_REBOOT                   (0x0D)
 
-#define CMD_SET_DOG_SIZE                    (0x1A)
+
+#define CMD_HARVEST_ENABLE_DISABLE          (0x10)   //start Or Stop Harvesting
+
 #define	CMD_GET_SESSION_DETAILS             (0x11) //Need to check for BOWL
 #define	CMD_GET_SESSION_DATA                (0x12) //Need to check for BOWL
 #define	CMD_GET_ACTIVITY_SESSION_DETAILS    (0x13) //Need to check for BOWL
 #define CMD_GET_ACTIVITY_SESSION_DATA       (0x14) //Need to check for BOWL
 
+#define	CMD_GET_DASHBOARD_INFO              (0x16)
 
-#define	 CMD_GET_TOTAL_SESSION_COUNT        (0x1E)
-#define	 CMD_GET_SESSION_BY_INDEX           (0x1F)
+#define CMD_SET_DOG_SIZE                    (0x1A)
 
+#define CMD_SET_WIFI_CREDENTIAL             (0x1C) 
+#define	CMD_GET_WIFI_CREDENTIAL             (0x1D)
+
+#define	CMD_GET_TOTAL_SESSION_COUNT         (0x1E)
+#define	CMD_GET_SESSION_BY_INDEX            (0x1F)
 
 #define	 CMD_SET_SENSOR_BOWL                (0x20)
  
@@ -53,6 +58,16 @@
 #define	 CMD_DO_LOADCELL_TARE               (0x21)
 #define	 CMD_DO_LOADCELL_CALIBRATION        (0x22)
 #define	 CMD_START_OTA                      (0x23)
+
+
+
+
+
+
+
+
+
+
 
 /*------------Header Types------------------------*/
 
@@ -125,3 +140,4 @@
 #endif
 
 #endif /* __COMMANDS__H */
+

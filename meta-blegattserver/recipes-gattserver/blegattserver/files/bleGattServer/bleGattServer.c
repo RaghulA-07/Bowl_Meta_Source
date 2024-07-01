@@ -34,10 +34,10 @@
 /* Private define -----------------------------------------------------------*/
 
 #define TAG                         "Main"
-#define SERVICE_UUID                "00c74f02-d1bc-11ed-afa1-0242ac120002"
-#define NOTIFY_CHARACTERISTIC_UUID  "207bdc30-c3cc-4a14-8b66-56ba8a826640"
-#define WRITE_CHARACTERISTIC_UUID   "6765a69d-cd79-4df6-aad5-043df9425556"
-#define READ_CHARACTERISTIC_UUID    "b6ab2ce3-a5aa-436a-817a-cc13a45aab76"
+#define SERVICE_UUID                "00c74f02-d1bc-11ed-afa1-0242ac120002" //   Service UUID
+#define NOTIFY_CHARACTERISTIC_UUID  "207bdc30-c3cc-4a14-8b66-56ba8a826640" // 	Notify, Notification Characteristics: (optional-not used )
+#define WRITE_CHARACTERISTIC_UUID   "6765a69d-cd79-4df6-aad5-043df9425556" //	Mobile application TX, Write Characteristics:
+#define READ_CHARACTERISTIC_UUID    "b6ab2ce3-a5aa-436a-817a-cc13a45aab76" //   Mobile Application RX, Read Characteristics:
 
 #define MAX_MESSAGE_SIZE             100
 

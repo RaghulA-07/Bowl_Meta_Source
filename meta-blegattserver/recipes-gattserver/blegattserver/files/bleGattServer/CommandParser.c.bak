@@ -19,12 +19,20 @@
 
 /* Project Includes ---------------------------------------------------------*/
 
+#include "ble_commands.h"
+
 /* Private typedef ----------------------------------------------------------*/
 
 /* Private define -----------------------------------------------------------*/
 
-#define MAX_SENSORS 7
+
+#define WIFI_CRENDENTIAL_FILE         "/home/root/wifi_credential.conf"  
+
+#define MAX_SENSORS       7
 #define MAX_MESSAGE_SIZE 100
+
+
+
 
 /* Private macro ------------------------------------------------------------*/
 
@@ -44,7 +52,12 @@ struct message
 
 struct message msg;
 
+uint64_t  current_session_uid;
+
 /* Private function prototypes -----------------------------------------------*/
+
+static void bytes_to_uint64(const uint8_t *data, uint64_t *ertc);
+bool send_dataharvestmain(const uint8_t * pDataStart ,size_t length );
 
 /*******************************************************************************
  * @name
@@ -91,6 +104,12 @@ void connectToWifi(const char *ssid, const char *password)
     printf("\n BLE_HOOK_INFO :Connecting to WiFi...\n");
     printf("\n BLE_HOOK_INFO :SSID: %s\n", ssid);
     printf("\n BLE_HOOK_INFO :Password: %s\n", password);
+
+
+    printf("\n BLE_HOOK_INFO : NEED TO IMPLEMENT Connecting to WiFi...\n");
+
+
+
 }
 
 /*******************************************************************************
@@ -106,176 +125,248 @@ int isWiFiConnected()
 }
 
 /*******************************************************************************
- * @name
- * @brief  Function handles the
+ * @name   parseCommand
+ * @brief  Function handles the parsing the ble incoming commands 
  * @param
  * @retval
  ********************************************************************************/
-
 void parseCommand(const uint8_t *data, int data_length, void (*readCallback)(const uint8_t *, size_t), void (*notifyCallback)(const uint8_t *, size_t))
 {
     printf("\n BLE_HOOK_INFO :BLE Command Received from mobile app\n");
 
-    for (int i = 0; i < data_length; i++)
+    uint8_t status            =eMSG_ACK_Failure;
+    uint8_t additionalData[1] = {0x00};    
+
+    uint8_t Start_of_header   =data[0];
+    uint8_t Frame_Length      =data[1];
+    uint8_t Frame_Type        =data[2];
+    uint8_t cmd               =data[3];
+    
+  
+
+
+    // for (int i = 0; i < data_length; i++)
+    // {
+    //     printf("%d ", data[i]); // Print the element
+    // }
+    // printf("\n");
+
+    // if (data_length == 0)
+    // {
+    //     printf("\n BLE_HOOK_INFO :Received empty data.\n");
+    //     return;
+    // }
+    // if (data[0] != 0x01)
+    // { // Start of header check
+    //     printf("\n BLE_HOOK_INFO :Invalid start of header.\n");
+    //     return;
+    // }
+    // if (data_length < 2 || data_length != data[1])
+    // {
+    //     printf("\n BLE_HOOK_INFO :Data length mismatch.\n");
+    //     return;
+    // }
+
+
+if (  data_length==Frame_Length)
+{
+
+    if (  MOBILE_APP_A55CORE_COMM_SOH==Start_of_header)
     {
-        printf("%d ", data[i]); // Print the element
+ 
+        if(1)    
+        // if (checkCRCforReceivedData(rxbuffer, rxlen))
+	   {
+            
+            switch (cmd)
+            {
+
+            case CMD_HARVEST_ENABLE_DISABLE:
+     
+            
+                // sending message to harvest main blehook
+                if (false==send_dataharvestmain(data,data_length))
+                {
+                    printf("\n BLE_HOOK_INFO :Error, Not able to harvest commands to Harvest main.\n");  
+
+                    startOrStopRecording_report(eMSG_ACK_Failure, UNABLE_TO_PROCESS, readCallback, notifyCallback);
+                }
+                else
+                {
+                    printf("\n BLE_HOOK_INFO : sent  harvestcommands to Harvest main = %s\n", msg.message_text);
+                     printf("\n");
+                    startOrStopRecording_report(eMSG_SUCCESS_ACK, 0, readCallback, notifyCallback);
+                }
+
+                status =eMSG_SUCCESS_ACK;
+                break;
+
+            case CMD_DO_LOADCELL_TARE: // load cell tare
+            case CMD_DO_LOADCELL_CALIBRATION: // load cell start calibrate
+            case CMD_FACTORY_RESET:
+            case CMD_DEVICE_REBOOT:
+                      
+
+                // sending message to harvest main blehook
+                if (false==send_dataharvestmain(data,data_length))
+                {
+                    printf("\n BLE_HOOK_INFO :Error, Not able to send  command to Harvest main.\n"); 
+                }
+                else
+                {
+                    printf("\n BLE_HOOK_INFO : command sent to Harvest main = %s\n", msg.message_text);
+                    printf("\n");
+                }   
+                additionalData[0]=0;
+                sendAck(cmd, additionalData, sizeof(additionalData), readCallback);
+
+                status =eMSG_SUCCESS_ACK;
+
+                break;
+
+            
+            case CMD_GET_EPOCH_CLOCK:
+                getTimeSync(data, data_length, readCallback);
+
+                status =eMSG_SUCCESS_ACK;
+
+                break;
+            case CMD_SET_EPOCH_CLOCK:
+                setTimeSync(data, data_length, readCallback);
+                status =eMSG_SUCCESS_ACK;
+                break;
+            case CMD_SET_WIFI_CREDENTIAL:
+                setWifiConfig(data, data_length, readCallback);
+                status =eMSG_SUCCESS_ACK;
+                break;
+            case CMD_GET_WIFI_CREDENTIAL:
+                getWifiConfig(data, data_length, readCallback);
+                status =eMSG_SUCCESS_ACK;
+                break;
+            case CMD_GET_DASHBOARD_INFO:
+                getDashboardInfoBowl(data, data_length, readCallback);
+                status =eMSG_SUCCESS_ACK;
+                break;
+            case CMD_SET_DOG_SIZE:
+                setDogSize(data, data_length, readCallback);
+                status =eMSG_SUCCESS_ACK;
+                break;
+            case CMD_GET_SESSION_DETAILS:
+                ReadRecordingSessionDetails(data, data_length, readCallback);
+                status =eMSG_SUCCESS_ACK;
+                break;
+            case CMD_GET_SESSION_DATA:
+                ReadRecordingSessionData(data, data_length, readCallback);
+                status =eMSG_SUCCESS_ACK;
+                break;
+            case CMD_GET_ACTIVITY_SESSION_DETAILS:
+                ReadRecordingSessionDetailsActivity(data, data_length, readCallback);
+                status =eMSG_SUCCESS_ACK;
+                break;
+            case CMD_GET_ACTIVITY_SESSION_DATA:
+                ReadRecordingSessionDataActivity(data, data_length, readCallback);
+                status =eMSG_SUCCESS_ACK;
+                break;
+            case CMD_GET_TOTAL_SESSION_COUNT:
+                getTotalSessionsCount(data, data_length, readCallback);
+                status =eMSG_SUCCESS_ACK;
+                break;
+            case CMD_GET_SESSION_BY_INDEX:
+                getSessionByIndex(data, data_length, readCallback);
+                status =eMSG_SUCCESS_ACK;
+                break;
+            case CMD_SET_SENSOR_BOWL:
+                setSensorForBowl(data, data_length, readCallback);
+                status =eMSG_SUCCESS_ACK;
+                break;
+
+
+            default:
+                printf("\n BLE_HOOK_INFO :Unknown or unsupported command.\n");
+                status= INVALID_CMD;
+                break;
+            }
+
+        }
+	    else
+        {
+		  status= BAD_CHECKSUM;
+        }
     }
-    printf("\n");
+   else
+   {
+	status= INVALID_START_BYTE;
+   }
+}
+else
+{
+status= INVALID_FRAME_LENGTH;
+}
 
-    if (data_length == 0)
-    {
-        printf("\n BLE_HOOK_INFO :Received empty data.\n");
-        return;
-    }
-    if (data[0] != 0x01)
-    { // Start of header check
-        printf("\n BLE_HOOK_INFO :Invalid start of header.\n");
-        return;
-    }
-    if (data_length < 2 || data_length != data[1])
-    {
-        printf("\n BLE_HOOK_INFO :Data length mismatch.\n");
-        return;
-    }
 
-    uint8_t cmd = data[3]; // CMD
-    switch (cmd)
-    {
-    case 0x10:
+    /*Error Management-Exception Code send to Mobile application */
+      if(status!=eMSG_SUCCESS_ACK)
+      {
 
-        msg.message_type = 1;          // Message type can be used to differentiate messages if needed
-        msg.message_text[0] = 0x01;    // First byte is the command ID
-        msg.message_text[1] = data[4]; // Start /Stop
-        // memcpy(msg.message_text + 1, data + 4, data_length - 4); // Copy the rest of the data// Ensure the message size is within limits
+        uint8_t ackPacket[20];
+        size_t ackPacketSize = 0; 
 
-        if (msgsnd(msgid, &msg, sizeof(msg.message_text), 0) == -1)
-        {
-            printf("\n BLE_HOOK_INFO :Error, Not able to send harvest start/stop command to M33 core.\n");
-            perror("msgsnd failed");
-            exit(EXIT_FAILURE);
-        }
-        else
-        {
-            printf("\n BLE_HOOK_INFO : send harvest start/stop command  sent to M33 Core = %s\n", msg.message_text);
-            // for (int i = 0; i < (int)sizeof(msg.message_text); i++)
-            // {
-            // printf("\n BLE_HOOK_INFO :%d ", msg.message_text[i]); // Print the element
-            // }
-            printf("\n");
-        }
+        ackPacket[ackPacketSize++] = A55CORE_MOBILE_APP_COMM_SOH; // SOH
+        ackPacket[ackPacketSize++] = 0x08;                        // Frame Length
+        ackPacket[ackPacketSize++] = COMM_REPORT_FRAME;           // FT
+        ackPacket[ackPacketSize++] = cmd;                         // CMD
+        ackPacket[ackPacketSize++] = status;                      //ACK
+        ackPacket[ackPacketSize++] = 0x00;                        //Reserved
 
-        startOrStopRecording(data, data_length, readCallback, notifyCallback);
-
-        break;
-    case 0x05:
-        getTimeSync(data, data_length, readCallback);
-        break;
-    case 0x06:
-        setTimeSync(data, data_length, readCallback);
-        break;
-    case 0x1C:
-        setWifiConfig(data, data_length, readCallback);
-        break;
-    case 0x1D:
-        getWifiConfig(data, data_length, readCallback);
-        break;
-    case 0x16:
-        getDashboardInfoBowl(data, data_length, readCallback);
-        break;
-    case 0x1A:
-        setDogSize(data, data_length, readCallback);
-        break;
-    case 0x11:
-        ReadRecordingSessionDetails(data, data_length, readCallback);
-        break;
-    case 0x12:
-        ReadRecordingSessionData(data, data_length, readCallback);
-        break;
-    case 0x13:
-        ReadRecordingSessionDetailsActivity(data, data_length, readCallback);
-        break;
-    case 0x14:
-        ReadRecordingSessionDataActivity(data, data_length, readCallback);
-        break;
-    case 0x1E:
-        getTotalSessionsCount(data, data_length, readCallback);
-        break;
-    case 0x1F:
-        getSessionByIndex(data, data_length, readCallback);
-        break;
-    case 0x20:
-        setSensorForBowl(data, data_length, readCallback);
-        break;
-
-    case 0x21: // load cell tare
-
-        msg.message_type = 1;       // Message type can be used to differentiate messages if needed
-        msg.message_text[0] = 0x02; // First byte is the command ID
-        msg.message_text[1] = 0;
-
-        if (msgsnd(msgid, &msg, sizeof(msg.message_text), 0) == -1)
-        {
-            printf("\n BLE_HOOK_INFO :Error, Not able to send load cell tare command to M33 core.\n");
-            perror("msgsnd failed");
-            exit(EXIT_FAILURE);
-        }
-        else
-        {
-            printf("\n BLE_HOOK_INFO : send load cell tare command  sent to M33 Core = %s\n", msg.message_text);
-            printf("\n");
-        }
-
-        break;
-
-    case 0x22: // load cell start calibrate
-
-        msg.message_type = 1;          // Message type can be used to differentiate messages if needed
-        msg.message_text[0] = 0x03;    // First byte is the command ID
-        msg.message_text[1] = data[4]; // MSB
-        msg.message_text[2] = data[5]; // LSB
-
-        if (msgsnd(msgid, &msg, sizeof(msg.message_text), 0) == -1)
-        {
-            printf("\n BLE_HOOK_INFO :Error, Not able to send harvest start/stop command to M33 core.\n");
-            perror("msgsnd failed");
-            exit(EXIT_FAILURE);
-        }
-        else
-        {
-            printf("\n BLE_HOOK_INFO : send harvest start/stop command  sent to M33 Core = %s\n", msg.message_text);
-            printf("\n");
-        }
-
-        break;
-    default:
-        printf("\n BLE_HOOK_INFO :Unknown or unsupported command.\n");
-        break;
-    }
+        appendChecksumAndUpdateLength(ackPacket, ackPacketSize);
+        readOrNotifyCallback(ackPacket, ackPacketSize + 2);
+      }
 }
 
 /*******************************************************************************
- * @name
+ * @name   send_dataharvestmain
  * @brief  Function handles the
- * @param
- * @retval
+ * @param  None
+ * @retval bool  data
  ********************************************************************************/
-
-void startOrStopRecording(const uint8_t *data, size_t data_length, void (*readCallback)(const uint8_t *, size_t), void (*notifyCallback)(const uint8_t *, size_t))
+bool send_dataharvestmain(const uint8_t * pDataStart ,size_t length )
 {
-    bool startStop = data[4] == 0x01; // Start/Stop flag
 
-    uint8_t additionalData[1] = {0x00}; // Additional data for the acknowledgment
+    memcpy(&msg.message_text[0], &pDataStart, length); 
 
-    if (startStop)
+    msg.message_type    = 1; 
+    if (msgsnd(msgid, &msg, sizeof(msg.message_text), 0) == -1)
     {
-        sendAck(0x10, additionalData, sizeof(additionalData), readCallback);
-        printf("\n BLE_HOOK_INFO :A55 CORE .Start Harvesting command received from BLE App\n");
+    retun false;
     }
     else
     {
-        sendAck(0x10, additionalData, sizeof(additionalData), readCallback);
-        printf("\n BLE_HOOK_INFO :A55 CORE .Stop Harvesting command received from BLE App\n");
-    }
+    retun true;
+    }   
+}
+            
+/*******************************************************************************
+ * @name   startOrStopRecording_report
+ * @brief  Function handles the
+ * @param
+ * @retval None
+ ********************************************************************************/
+
+void startOrStopRecording_report( uint8_t data, uint8_t harvestingState, void (*readCallback)(const uint8_t *, size_t), void (*notifyCallback)(const uint8_t *, size_t))
+{
+      
+    uint8_t ackPacket[100];
+    size_t ackPacketSize = 0; 
+
+    ackPacket[ackPacketSize++] = A55CORE_MOBILE_APP_COMM_SOH; // SOH
+    ackPacket[ackPacketSize++] = 0x08;                        // Frame Length
+    ackPacket[ackPacketSize++] = COMM_REPORT_FRAME;           // FT
+    ackPacket[ackPacketSize++] = CMD_HARVEST_ENABLE_DISABLE;                        // CMD
+    ackPacket[ackPacketSize++] = data; // ACK
+    ackPacket[ackPacketSize++] = harvestingState; 
+
+    appendChecksumAndUpdateLength(ackPacket, ackPacketSize);
+    readOrNotifyCallback(ackPacket, ackPacketSize + 2);
 }
 
 /*******************************************************************************
@@ -289,6 +380,8 @@ void setWifiConfig(const uint8_t *data, size_t data_length, void (*readCallback)
     char wifiSSID[21] = {0}; // 20 characters + null terminator
     size_t ssidLen = data[4];
     size_t len1 = 5 + (20 - ssidLen);
+    uint8_t additionalData[1] = {0x00}; // Additional data for the acknowledgment
+
     for (size_t i = len1; i <= 24; ++i)
     {
         wifiSSID[i - len1] = (char)data[i];
@@ -306,14 +399,40 @@ void setWifiConfig(const uint8_t *data, size_t data_length, void (*readCallback)
     }
 
     // Print SSID and password
-    printf("\n BLE_HOOK_INFO :WiFi SSID: %s\n", wifiSSID);
-    printf("\n BLE_HOOK_INFO :WiFi Password: %s\n", wifiPassword);
+    printf("\n BLE_HOOK_INFO :Received WiFi SSID from Mobile application: %s\n", wifiSSID);
+    printf("\n BLE_HOOK_INFO :WiFi Password from Mobile application: %s\n", wifiPassword);
 
-    connectToWifi(wifiSSID, wifiPassword);
-    printf("\n BLE_HOOK_INFO :Status: %d\n", isWiFiConnected());
 
-    uint8_t additionalData[1] = {0x00}; // Additional data for the acknowledgment
-    sendAck(0x1C, additionalData, sizeof(additionalData), readCallback);
+     FILE *file = fopen(WIFI_CRENDENTIAL_FILE, "a");
+    if (file)
+    {
+        printf("\n BLE_HOOK_INFO: %s - Creating file for WIFI Crendential", file);
+
+        // Write the Wi-Fi network configuration to the file
+        fprintf(file, "network={\n");
+        fprintf(file, "    ssid=%s\n", wifiSSID);
+        fprintf(file, "    key_mgmt=WPA-PSK\n");
+        fprintf(file, "    psk=%s\n", wifiPassword);
+        fprintf(file, "}\n");
+
+        fclose(file);
+
+        printf("\n BLE_HOOK_INFO: %s -  WIFI Crendential file created ...", file);
+
+        printf("\n BLE_HOOK_INFO:  TODO: call reboot command here ..");
+    }
+    else
+    {
+       printf("\n BLE_HOOK_INFO: %s - ERROR - WIFI Crendential file unable to open", file); 
+    }
+
+
+    // connectToWifi(wifiSSID, wifiPassword);
+    
+    printf("\n BLE_HOOK_INFO :WIFI Connection Status: %d\n", isWiFiConnected());
+
+   
+    sendAck(CMD_SET_WIFI_CREDENTIAL, additionalData, sizeof(additionalData), readCallback);
 }
 
 /*******************************************************************************
@@ -331,7 +450,7 @@ void getWifiConfig(const uint8_t *data, size_t data_length, void (*readCallback)
         additionalData[42] = 0x01; // Index 43 in array (arrays are zero-based)
     }
 
-    sendAck(0x1D, additionalData, sizeof(additionalData), readCallback);
+    sendAck(CMD_GET_WIFI_CREDENTIAL, additionalData, sizeof(additionalData), readCallback);
 }
 
 /*******************************************************************************
@@ -367,7 +486,7 @@ void getDashboardInfoBowl(const uint8_t *data, size_t data_length, void (*readCa
         0x07,
         // Temperature lower byte
         0x08};
-    sendAck(0x16, additionalData, sizeof(additionalData), readCallback);
+    sendAck(CMD_GET_DASHBOARD_INFO, additionalData, sizeof(additionalData), readCallback);
 }
 
 /*******************************************************************************
@@ -380,7 +499,7 @@ void getDashboardInfoBowl(const uint8_t *data, size_t data_length, void (*readCa
 void setDogSize(const uint8_t *data, size_t data_length, void (*readCallback)(const uint8_t *, size_t))
 {
     uint8_t additionalData[] = {0x00};
-    sendAck(0x1A, additionalData, sizeof(additionalData), readCallback);
+    sendAck(CMD_SET_DOG_SIZE, additionalData, sizeof(additionalData), readCallback);
 }
 
 /*******************************************************************************
@@ -413,7 +532,7 @@ void ReadRecordingSessionDetails(const uint8_t *data, size_t data_length, void (
     additionalData[8] = 0x00;
     additionalData[9] = 0x01;
 
-    sendAck(0x11, additionalData, additionalDataSize, readCallback);
+    sendAck(CMD_GET_SESSION_DETAILS, additionalData, additionalDataSize, readCallback);
 }
 
 /*******************************************************************************
@@ -484,7 +603,7 @@ void ReadRecordingSessionDetailsActivity(const uint8_t *data, size_t data_length
     additionalData[8] = 0x00;
     additionalData[9] = 0x01;
 
-    sendAck(0x13, additionalData, additionalDataSize, readCallback);
+    sendAck(CMD_GET_ACTIVITY_SESSION_DETAILS, additionalData, additionalDataSize, readCallback);
 }
 
 /*******************************************************************************
@@ -535,7 +654,7 @@ void ReadRecordingSessionDataActivity(const uint8_t *data, size_t data_length, v
 void getTotalSessionsCount(const uint8_t *data, size_t data_length, void (*readCallback)(const uint8_t *, size_t))
 {
     uint8_t additionalData[1] = {0x05};
-    sendAck(0x1E, additionalData, sizeof(additionalData), readCallback);
+    sendAck(CMD_GET_TOTAL_SESSION_COUNT, additionalData, sizeof(additionalData), readCallback);
 }
 
 /*******************************************************************************
@@ -557,7 +676,7 @@ void getSessionByIndex(const uint8_t *data, size_t data_length, void (*readCallb
         {
             additionalData[i] = sessionData[index][i];
         }
-        sendAck(0x1F, additionalData, sizeof(additionalData), readCallback);
+        sendAck(CMD_GET_SESSION_BY_INDEX, additionalData, sizeof(additionalData), readCallback);
     }
     else
     {
@@ -590,7 +709,7 @@ void setSensorForBowl(const uint8_t *data, size_t data_length, void (*readCallba
     free(selectedSensors);
 
     // Call sendAck with appropriate parameters
-    sendAck(0x20, additionalData, sizeof(additionalData), readCallback);
+    sendAck(CMD_SET_SENSOR_BOWL, additionalData, sizeof(additionalData), readCallback);
 }
 
 /*******************************************************************************
@@ -648,7 +767,7 @@ void setTimeSync(const uint8_t *data, size_t dataSize, void (*readCallback)(cons
     const uint8_t additionalData[] = {0x00};
     size_t additionalDataSize = sizeof(additionalData) / sizeof(additionalData[0]);
 
-    sendAck(0x06, additionalData, additionalDataSize, readCallback);
+    sendAck(CMD_SET_EPOCH_CLOCK, additionalData, additionalDataSize, readCallback);
 }
 
 /*******************************************************************************
@@ -662,11 +781,11 @@ void getTimeSync(const uint8_t *data, size_t dataSize, void (*readCallback)(cons
     const uint8_t additionalData[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     size_t additionalDataSize = sizeof(additionalData) / sizeof(additionalData[0]);
 
-    sendAck(0x05, additionalData, additionalDataSize, readCallback);
+    sendAck(CMD_GET_EPOCH_CLOCK, additionalData, additionalDataSize, readCallback);
 }
 
 /*******************************************************************************
- * @name
+ * @name   sendAck
  * @brief  Function handles the
  * @param
  * @retval
@@ -677,25 +796,25 @@ void sendAck(uint8_t cmd, const uint8_t *data, size_t data_length, void (*readOr
     uint8_t ackPacket[100];
     size_t ackPacketSize = 0;
 
-    ackPacket[ackPacketSize++] = 0x02; // SOH
-    ackPacket[ackPacketSize++] = 0x08; // Frame Length
-    ackPacket[ackPacketSize++] = 0xF2; // FT
-    ackPacket[ackPacketSize++] = cmd;  // CMD
+    ackPacket[ackPacketSize++] = A55CORE_MOBILE_APP_COMM_SOH; // SOH
+    ackPacket[ackPacketSize++] = 0x08;                        // Frame Length
+    ackPacket[ackPacketSize++] = COMM_REPORT_FRAME;           // FT
+    ackPacket[ackPacketSize++] = cmd;                        // CMD
 
     if (cmd == 0x04)
     {
         if (isWiFiConnected())
         {
-            ackPacket[ackPacketSize++] = 0x11; // ACK
+            ackPacket[ackPacketSize++] = eMSG_SUCCESS_ACK; // ACK
         }
         else
         {
-            ackPacket[ackPacketSize++] = 0x12; // Error
+            ackPacket[ackPacketSize++] = eMSG_ACK_Failure; // Error
         }
     }
     else
     {
-        ackPacket[ackPacketSize++] = 0x11; // ACK
+        ackPacket[ackPacketSize++] = eMSG_SUCCESS_ACK; // ACK
     }
 
     for (size_t i = 0; i < data_length; ++i)
@@ -706,4 +825,26 @@ void sendAck(uint8_t cmd, const uint8_t *data, size_t data_length, void (*readOr
     appendChecksumAndUpdateLength(ackPacket, ackPacketSize);
 
     readOrNotifyCallback(ackPacket, ackPacketSize + 2);
+}
+
+/*******************************************************************************
+* @name   bytes_to_uint64
+* @brief  Function to convert 'bytes stream of 8 bytes' to
+*         a unsigned long long integer (64 bit integer).
+* @param  const uint8_t *data, uint64_t *ert
+* @retval none
+*****************************************************************************/
+static void bytes_to_uint64(const uint8_t *data, uint64_t *ertc)
+{
+	uint8_t *ptr;
+	ptr = (uint8_t *)ertc;
+
+	ptr[0] = data[0];
+	ptr[1] = data[1];
+	ptr[2] = data[2];
+	ptr[3] = data[3];
+	ptr[4] = data[4];
+	ptr[5] = data[5];
+	ptr[6] = data[6];
+	ptr[7] = data[7];
 }

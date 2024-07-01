@@ -47,6 +47,7 @@
 #define GET_SESSION_DATA_ACTIVITY_CMD      (0x0B)
 #define GET_TOTALSESSION_CNT_CMD           (0x0C)
 #define SET_SENSOR_BOWL_CMD                (0x0D)
+#define M33_RPMSG_PIR_TRIGGER_CMD          (0x0E)
 
 
 /* Exported Variables --------------------------------------------------------*/

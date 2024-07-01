@@ -36,6 +36,7 @@ SRC_URI = "file://CMakeLists.txt \
            file://bleGattServer/CMakeLists.txt \
            file://bleGattServer/CommandParser.c \
            file://bleGattServer/CommandParser.h \
+           file://bleGattServer/ble_commands.h \
            file://bleGattServer/bleGattServer.c"
  
 S = "${WORKDIR}"
